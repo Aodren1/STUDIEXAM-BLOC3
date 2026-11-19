@@ -20,7 +20,7 @@ data/
 
 # énoncé Studi : reproduction interdite ; seul le dossier final est versionné
 *.pdf
-!docs/BCDBigData_Examen_B3_copiearendre_FLORIDE_Aodren.pdf
+!BCDBigData_Examen_B3_copiearendre_FLORIDE_Aodren.pdf
 
 # fichiers intermédiaires du dossier
 docs/dossier.html

@@ -1,0 +1,59 @@
+<section class="dossier">
+  <h1>Dossier 3 — Gestion des corrections</h1>
+  <div class="question">
+    <p><b>Question 1.</b> Branchez au moins un outil de contrôle de la qualité du code (ex. : Sonar).</p>
+    <p class="crit"><b>C3.3</b> Procéder aux corrections d’erreurs et aux optimisations du code selon les bonnes pratiques du langage et de l’écosystème, afin d’assurer une amélioration continue. <b>Critères :</b> pratiques pour identifier la source des bogues, pour les corriger, pour tester et valider les correctifs.</p>
+  </div>
+
+  <h2>1. Trois outils complémentaires, branchés à trois moments</h2>
+  <table class="compact">
+    <thead><tr><th>Outil</th><th>Ce qu’il contrôle</th><th>Quand</th><th>Configuration</th></tr></thead>
+    <tbody>
+      <tr><td><b>Ruff</b></td><td>Style (PEP 8), erreurs probables (pyflakes, bugbear), complexité cyclomatique (≤ 12), nommage, simplifications, règles de sécurité (portage de bandit), formatage</td><td>À chaque sauvegarde (éditeur), à chaque commit (pre-commit), à chaque push (CI)</td><td><code>[tool.ruff]</code> dans <code>pyproject.toml</code> : 12 familles de règles</td></tr>
+      <tr><td><b>Bandit</b></td><td>Vulnérabilités Python : injection SQL, appels système, URL non maîtrisées, aléatoire non cryptographique</td><td>Pre-commit et CI ; rapport JSON importé dans Sonar</td><td><code>[tool.bandit]</code> ; chaque exception justifiée sur place</td></tr>
+      <tr><td><b>SonarCloud</b></td><td>Vision consolidée : bugs, vulnérabilités, <i>code smells</i>, duplication, couverture, dette technique, <i>Quality Gate</i> sur le nouveau code</td><td>CI, après les tests (job <code>sonarcloud</code>)</td><td><code>sonar-project.properties</code> : sources, couverture <code>coverage.xml</code>, résultats <code>junit.xml</code>, import des rapports ruff et bandit</td></tr>
+    </tbody>
+  </table>
+  <p>Ruff et bandit s’exécutent en quelques secondes et bloquent la fusion d’une branche. SonarCloud apporte le suivi dans le temps et la Quality Gate « Sonar way » : sur le nouveau code, couverture ≥ 80 %, duplication ≤ 3 %, aucune vulnérabilité, notes A en fiabilité, sécurité et maintenabilité. L’analyse SonarCloud se déclenche dès que le secret <code>SONAR_TOKEN</code> est défini dans le dépôt GitHub. Sans lui, le job s’arrête proprement avec une notice au lieu d’échouer.</p>
+
+  <h2>2. Premier passage : 149 alertes ruff, 7 alertes bandit</h2>
+  <p>Ruff a été activé avec toutes ses familles de règles <b>après</b> l’écriture des fonctionnalités. C’est le cas réaliste d’un outil qualité branché sur un code existant. Rapport initial (<code>reports/qualite/ruff-1-initial.txt</code>) :</p>
+  <!--GEN:ruff_avant-->
+  <p>Bandit relevait de son côté cinq constructions de requêtes SQL par chaîne (B608), une ouverture d’URL (B310) et un générateur aléatoire non cryptographique (B311).</p>
+
+  <h2>3. Les corrections, et pourquoi pas de simples suppressions</h2>
+  <p>Faire taire un outil est facile : il suffit d’ajouter <code># noqa</code>. Chaque alerte a donc été examinée, puis traitée par l’une de ces quatre réponses :</p>
+  <table class="compact">
+    <thead><tr><th>Alerte</th><th>Analyse</th><th>Correction</th></tr></thead>
+    <tbody>
+      <tr><td>B608 / S608 — SQL construit par chaîne</td><td>Les noms de tables et de colonnes ne peuvent pas être passés en paramètres liés (<code>?</code>). Ils venaient de constantes, mais rien ne le garantissait pour la suite</td><td><b>Défense en profondeur</b> : module <code>fusion/sqlsafe.py</code>. Tout identifiant interpolé passe par une liste blanche (forme et appartenance au schéma), les valeurs restent liées. Testé avec des tentatives d’injection</td></tr>
+      <tr><td>E501 — lignes trop longues (113)</td><td>Lisibilité</td><td>Formatage automatique (<code>ruff format</code>, longueur 120) imposé en CI</td></tr>
+      <tr><td>PLR0915 / C901 — fonction de 64 instructions</td><td>L’enregistrement des routes Flask dans une seule fonction</td><td>Découpage par responsabilité : sécurité, authentification, API, pipeline, erreurs</td></tr>
+      <tr><td>PLR0911 — huit <code>return</code></td><td>Mise en forme des téléphones dans le générateur</td><td>Table de formats pondérés : plus courte et extensible</td></tr>
+      <tr><td>PLR0917 — trop d’arguments positionnels</td><td>Risque d’inversion de deux paramètres de même type</td><td>Arguments nommés obligatoires (<code>*, state=…</code>)</td></tr>
+      <tr><td>SIM102, SIM113, RUF012</td><td>Simplifications et attribut de classe mutable</td><td>Corrigés</td></tr>
+      <tr><td>PLC0415 — imports différés (20)</td><td>Volontaires : <code>kafka</code>, <code>pyspark</code> et <code>waitress</code> sont des dépendances optionnelles</td><td>Règle désactivée <b>avec sa justification</b> dans <code>pyproject.toml</code></td></tr>
+      <tr><td>B310, B311</td><td>URL au schéma vérifié ; aléatoire servant à des données de test</td><td>Exception locale commentée (<code># nosec</code> justifié), vérifiée par un test</td></tr>
+    </tbody>
+  </table>
+  <p>Résultat : <b>0 alerte ruff, 0 alerte bandit</b> (<code>reports/qualite/*-2-final.txt</code>), et la CI garantit que ce niveau se maintient.</p>
+  <div class="box">
+    <h4>Un effet de bord utile</h4>
+    <p>En traitant les alertes, pytest a signalé des <code>ResourceWarning</code> : des connexions SQLite restaient ouvertes. L’analyse a montré que <code>with sqlite3.connect(...)</code> valide la transaction mais <b>ne ferme pas</b> la connexion, contrairement à l’intuition. Les tests utilisent désormais <code>contextlib.closing</code>. Le code applicatif fermait déjà ses connexions explicitement.</p>
+  </div>
+
+  <h2>4. L’intégration continue</h2>
+  <p>Le workflow <code>.github/workflows/ci.yml</code> exécute à chaque push et à chaque pull request :</p>
+  <table class="compact">
+    <thead><tr><th>Job</th><th>Contrôle</th><th>Bloquant</th></tr></thead>
+    <tbody>
+      <tr><td><code>convention</code></td><td>Nom de branche conforme à la convention</td><td>oui</td></tr>
+      <tr><td><code>qualite</code></td><td>ruff (lint et format), bandit ; rapports JSON conservés pour Sonar</td><td>oui</td></tr>
+      <tr><td><code>tests</code></td><td>Tests Python sur 3.11, 3.12 et 3.13, couverture ≥ 85 % ; tests JavaScript</td><td>oui</td></tr>
+      <tr><td><code>spark</code></td><td>Jobs PySpark sur Java 17 : équivalence avec le moteur local</td><td>oui</td></tr>
+      <tr><td><code>kafka</code></td><td>Intégration contre un broker Apache Kafka réel (conteneur de service)</td><td>oui</td></tr>
+      <tr><td><code>sonarcloud</code></td><td>Analyse et Quality Gate</td><td>oui si le jeton est défini</td></tr>
+      <tr><td><code>image</code></td><td>Construction de l’image Docker, démarrage, contrôles de fumée (santé, connexion, 401 sans session, réconciliation)</td><td>oui</td></tr>
+    </tbody>
+  </table>
+</section>
