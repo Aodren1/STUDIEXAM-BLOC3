@@ -158,8 +158,16 @@ def run_dedup(clients: list[dict[str, Any]], truth: list[tuple[str, str]] | None
         if s < SEUIL_PROBABLE:
             continue
         niveau = "CERTAIN" if s >= SEUIL_CERTAIN else "PROBABLE"
-        paires.append({"uid_a": a, "uid_b": b, "type_paire": f"{a[:2]}-{b[:2]}", "score": s, "niveau": niveau,
-                       **{f"c_{k}": v for k, v in crit.items()}})
+        paires.append(
+            {
+                "uid_a": a,
+                "uid_b": b,
+                "type_paire": f"{a[:2]}-{b[:2]}",
+                "score": s,
+                "niveau": niveau,
+                **{f"c_{k}": v for k, v in crit.items()},
+            }
+        )
         if niveau == "CERTAIN":
             uf.union(a, b)
 
@@ -197,19 +205,21 @@ def build_golden_records(by_uid: dict[str, dict[str, Any]], personne_de: dict[st
         ident = max(ab or members, key=lambda m: m.get("date_creation") or "")
         births = Counter(m["date_naissance"] for m in members if m.get("date_naissance"))
         sources = sorted({m["source"] for m in members})
-        out.append({
-            "personne_id": pid,
-            "nom": ident.get("nom"),
-            "prenom": ident.get("prenom"),
-            "date_naissance": births.most_common(1)[0][0] if births else None,
-            "email": _most_recent(members, "email"),
-            "telephone": _most_recent(members, "telephone"),
-            "code_postal": _most_recent(members, "code_postal"),
-            "pays": _most_recent(members, "pays"),
-            "region": _most_recent(members, "region"),
-            "nb_comptes": len(members),
-            "sources": "+".join(sources),
-        })
+        out.append(
+            {
+                "personne_id": pid,
+                "nom": ident.get("nom"),
+                "prenom": ident.get("prenom"),
+                "date_naissance": births.most_common(1)[0][0] if births else None,
+                "email": _most_recent(members, "email"),
+                "telephone": _most_recent(members, "telephone"),
+                "code_postal": _most_recent(members, "code_postal"),
+                "pays": _most_recent(members, "pays"),
+                "region": _most_recent(members, "region"),
+                "nb_comptes": len(members),
+                "sources": "+".join(sources),
+            }
+        )
     return out
 
 
@@ -226,7 +236,11 @@ def evaluate(paires: list[dict[str, Any]], truth: list[tuple[str, str]]) -> dict
     res = {}
     for label, levels in (("certain", {"CERTAIN"}), ("certain_probable", {"CERTAIN", "PROBABLE"})):
         found = [p for p in paires if p["niveau"] in levels]
-        tp = sum(1 for p in found if p["uid_a"] in known and p["uid_b"] in known and uf.find(p["uid_a"]) == uf.find(p["uid_b"]))
+        tp = sum(
+            1
+            for p in found
+            if p["uid_a"] in known and p["uid_b"] in known and uf.find(p["uid_a"]) == uf.find(p["uid_b"])
+        )
         res[label] = {
             "paires_detectees": len(found),
             "vrais_positifs": tp,

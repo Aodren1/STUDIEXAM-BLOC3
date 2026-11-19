@@ -34,51 +34,255 @@ DUP_AP_RATE = 0.015  # doublons internes AP (double inscription dans l'applicati
 PAY_FROM = date(2025, 1, 1)  # historique de paiements chargé
 
 PRENOMS = [
-    "Marie", "Jean", "Pierre", "Sophie", "Camille", "Lucas", "Léa", "Hugo", "Chloé", "Louis", "Emma", "Gabriel",
-    "Manon", "Arthur", "Inès", "Jules", "Sarah", "Thomas", "Julie", "Nicolas", "Laura", "Antoine", "Céline",
-    "Maxime", "Pauline", "Alexandre", "Élodie", "Julien", "Mathilde", "François", "Isabelle", "Philippe",
-    "Nathalie", "Stéphane", "Valérie", "Olivier", "Sandrine", "Christophe", "Aurélie", "Mickaël", "Hélène",
-    "Benoît", "Anaïs", "Raphaël", "Zoé", "Noah", "Jade", "Adam", "Lina", "Yanis", "Fatima", "Karim", "Amélie",
-    "Bastien", "Clément", "Lucie", "Romain", "Margaux", "Théo", "Sven", "Lotte", "Pieter", "Anke", "Joël",
-    "Gaëlle", "Hervé", "Brigitte", "Jean-Pierre", "Marie-Claire", "Anne-Sophie",
+    "Marie",
+    "Jean",
+    "Pierre",
+    "Sophie",
+    "Camille",
+    "Lucas",
+    "Léa",
+    "Hugo",
+    "Chloé",
+    "Louis",
+    "Emma",
+    "Gabriel",
+    "Manon",
+    "Arthur",
+    "Inès",
+    "Jules",
+    "Sarah",
+    "Thomas",
+    "Julie",
+    "Nicolas",
+    "Laura",
+    "Antoine",
+    "Céline",
+    "Maxime",
+    "Pauline",
+    "Alexandre",
+    "Élodie",
+    "Julien",
+    "Mathilde",
+    "François",
+    "Isabelle",
+    "Philippe",
+    "Nathalie",
+    "Stéphane",
+    "Valérie",
+    "Olivier",
+    "Sandrine",
+    "Christophe",
+    "Aurélie",
+    "Mickaël",
+    "Hélène",
+    "Benoît",
+    "Anaïs",
+    "Raphaël",
+    "Zoé",
+    "Noah",
+    "Jade",
+    "Adam",
+    "Lina",
+    "Yanis",
+    "Fatima",
+    "Karim",
+    "Amélie",
+    "Bastien",
+    "Clément",
+    "Lucie",
+    "Romain",
+    "Margaux",
+    "Théo",
+    "Sven",
+    "Lotte",
+    "Pieter",
+    "Anke",
+    "Joël",
+    "Gaëlle",
+    "Hervé",
+    "Brigitte",
+    "Jean-Pierre",
+    "Marie-Claire",
+    "Anne-Sophie",
 ]
 NOMS = [
-    "Martin", "Bernard", "Dubois", "Thomas", "Robert", "Richard", "Petit", "Durand", "Leroy", "Moreau", "Simon",
-    "Laurent", "Lefèvre", "Michel", "Garcia", "David", "Bertrand", "Roux", "Vincent", "Fournier", "Morel",
-    "Girard", "André", "Lefebvre", "Mercier", "Dupont", "Lambert", "Bonnet", "François", "Martinez", "Legrand",
-    "Garnier", "Faure", "Rousseau", "Blanc", "Guérin", "Muller", "Henry", "Roussel", "Nicolas", "Perrin",
-    "Morin", "Mathieu", "Clément", "Gauthier", "Dumont", "Lopez", "Fontaine", "Chevalier", "Robin", "Masson",
-    "Sanchez", "Gérard", "Nguyen", "Boyer", "Denis", "Lemaire", "Duval", "Joly", "Gautier", "Roger", "Roche",
-    "Roy", "Noël", "Meyer", "Lucas", "Meunier", "Pérez", "Marchand", "Dufour", "Blanchard", "Le Gall",
-    "Kerboul", "Janssens", "Peeters", "Maes", "De Vries", "Van Dijk", "Schmit", "Weber", "Hoffmann", "Benali",
-    "Haddad", "Da Silva",
+    "Martin",
+    "Bernard",
+    "Dubois",
+    "Thomas",
+    "Robert",
+    "Richard",
+    "Petit",
+    "Durand",
+    "Leroy",
+    "Moreau",
+    "Simon",
+    "Laurent",
+    "Lefèvre",
+    "Michel",
+    "Garcia",
+    "David",
+    "Bertrand",
+    "Roux",
+    "Vincent",
+    "Fournier",
+    "Morel",
+    "Girard",
+    "André",
+    "Lefebvre",
+    "Mercier",
+    "Dupont",
+    "Lambert",
+    "Bonnet",
+    "François",
+    "Martinez",
+    "Legrand",
+    "Garnier",
+    "Faure",
+    "Rousseau",
+    "Blanc",
+    "Guérin",
+    "Muller",
+    "Henry",
+    "Roussel",
+    "Nicolas",
+    "Perrin",
+    "Morin",
+    "Mathieu",
+    "Clément",
+    "Gauthier",
+    "Dumont",
+    "Lopez",
+    "Fontaine",
+    "Chevalier",
+    "Robin",
+    "Masson",
+    "Sanchez",
+    "Gérard",
+    "Nguyen",
+    "Boyer",
+    "Denis",
+    "Lemaire",
+    "Duval",
+    "Joly",
+    "Gautier",
+    "Roger",
+    "Roche",
+    "Roy",
+    "Noël",
+    "Meyer",
+    "Lucas",
+    "Meunier",
+    "Pérez",
+    "Marchand",
+    "Dufour",
+    "Blanchard",
+    "Le Gall",
+    "Kerboul",
+    "Janssens",
+    "Peeters",
+    "Maes",
+    "De Vries",
+    "Van Dijk",
+    "Schmit",
+    "Weber",
+    "Hoffmann",
+    "Benali",
+    "Haddad",
+    "Da Silva",
 ]
 # (code postal, ville, poids)
 LIEUX = [
-    ("75011", "Paris", 30), ("75015", "Paris", 25), ("92100", "Boulogne-Billancourt", 8), ("93200", "Saint-Denis", 7),
-    ("94000", "Créteil", 6), ("78000", "Versailles", 6), ("91000", "Évry", 5), ("95000", "Cergy", 5),
-    ("77000", "Melun", 4), ("13001", "Marseille", 16), ("06000", "Nice", 8), ("83000", "Toulon", 6),
-    ("84000", "Avignon", 5), ("69003", "Lyon", 15), ("38000", "Grenoble", 6), ("42000", "Saint-Étienne", 5),
-    ("63000", "Clermont-Ferrand", 5), ("74000", "Annecy", 4), ("31000", "Toulouse", 12), ("34000", "Montpellier", 9),
-    ("30000", "Nîmes", 5), ("66000", "Perpignan", 4), ("33000", "Bordeaux", 11), ("87000", "Limoges", 4),
-    ("64000", "Pau", 4), ("17000", "La Rochelle", 3), ("44000", "Nantes", 10), ("49000", "Angers", 5),
-    ("72000", "Le Mans", 4), ("85000", "La Roche-sur-Yon", 3), ("35000", "Rennes", 8), ("29200", "Brest", 5),
-    ("56000", "Vannes", 3), ("59000", "Lille", 11), ("80000", "Amiens", 4), ("62000", "Arras", 3),
-    ("67000", "Strasbourg", 9), ("57000", "Metz", 5), ("51100", "Reims", 5), ("54000", "Nancy", 4),
-    ("76000", "Rouen", 6), ("14000", "Caen", 5), ("21000", "Dijon", 5), ("25000", "Besançon", 4),
-    ("37000", "Tours", 5), ("45000", "Orléans", 5), ("20000", "Ajaccio", 2), ("97400", "Saint-Denis", 2),
-    ("1000", "Bruxelles", 9), ("4000", "Liège", 4), ("5000", "Namur", 2), ("9000", "Gand", 3),
-    ("L-1009", "Luxembourg", 4), ("L-4002", "Esch-sur-Alzette", 1), ("1012 AB", "Amsterdam", 3),
+    ("75011", "Paris", 30),
+    ("75015", "Paris", 25),
+    ("92100", "Boulogne-Billancourt", 8),
+    ("93200", "Saint-Denis", 7),
+    ("94000", "Créteil", 6),
+    ("78000", "Versailles", 6),
+    ("91000", "Évry", 5),
+    ("95000", "Cergy", 5),
+    ("77000", "Melun", 4),
+    ("13001", "Marseille", 16),
+    ("06000", "Nice", 8),
+    ("83000", "Toulon", 6),
+    ("84000", "Avignon", 5),
+    ("69003", "Lyon", 15),
+    ("38000", "Grenoble", 6),
+    ("42000", "Saint-Étienne", 5),
+    ("63000", "Clermont-Ferrand", 5),
+    ("74000", "Annecy", 4),
+    ("31000", "Toulouse", 12),
+    ("34000", "Montpellier", 9),
+    ("30000", "Nîmes", 5),
+    ("66000", "Perpignan", 4),
+    ("33000", "Bordeaux", 11),
+    ("87000", "Limoges", 4),
+    ("64000", "Pau", 4),
+    ("17000", "La Rochelle", 3),
+    ("44000", "Nantes", 10),
+    ("49000", "Angers", 5),
+    ("72000", "Le Mans", 4),
+    ("85000", "La Roche-sur-Yon", 3),
+    ("35000", "Rennes", 8),
+    ("29200", "Brest", 5),
+    ("56000", "Vannes", 3),
+    ("59000", "Lille", 11),
+    ("80000", "Amiens", 4),
+    ("62000", "Arras", 3),
+    ("67000", "Strasbourg", 9),
+    ("57000", "Metz", 5),
+    ("51100", "Reims", 5),
+    ("54000", "Nancy", 4),
+    ("76000", "Rouen", 6),
+    ("14000", "Caen", 5),
+    ("21000", "Dijon", 5),
+    ("25000", "Besançon", 4),
+    ("37000", "Tours", 5),
+    ("45000", "Orléans", 5),
+    ("20000", "Ajaccio", 2),
+    ("97400", "Saint-Denis", 2),
+    ("1000", "Bruxelles", 9),
+    ("4000", "Liège", 4),
+    ("5000", "Namur", 2),
+    ("9000", "Gand", 3),
+    ("L-1009", "Luxembourg", 4),
+    ("L-4002", "Esch-sur-Alzette", 1),
+    ("1012 AB", "Amsterdam", 3),
     ("3011 AA", "Rotterdam", 2),
 ]
 VOIES = [
-    "rue de la République", "avenue Jean Jaurès", "boulevard Victor Hugo", "rue Pasteur", "rue du Moulin",
-    "place de la Mairie", "rue des Lilas", "avenue de la Gare", "chemin des Vignes", "rue Nationale",
-    "allée des Tilleuls", "rue Gambetta", "impasse des Roses", "quai des Chartrons", "rue Saint-Michel", "avenue Foch",
+    "rue de la République",
+    "avenue Jean Jaurès",
+    "boulevard Victor Hugo",
+    "rue Pasteur",
+    "rue du Moulin",
+    "place de la Mairie",
+    "rue des Lilas",
+    "avenue de la Gare",
+    "chemin des Vignes",
+    "rue Nationale",
+    "allée des Tilleuls",
+    "rue Gambetta",
+    "impasse des Roses",
+    "quai des Chartrons",
+    "rue Saint-Michel",
+    "avenue Foch",
 ]
 ABREV = {"rue": "R", "avenue": "AV", "boulevard": "BD", "place": "PL", "chemin": "CH", "impasse": "IMP"}
-DOMAINES = ["gmail.com", "orange.fr", "free.fr", "hotmail.fr", "yahoo.fr", "outlook.com", "laposte.net", "sfr.fr",
-            "icloud.com", "proton.me", "skynet.be", "pt.lu"]
+DOMAINES = [
+    "gmail.com",
+    "orange.fr",
+    "free.fr",
+    "hotmail.fr",
+    "yahoo.fr",
+    "outlook.com",
+    "laposte.net",
+    "sfr.fr",
+    "icloud.com",
+    "proton.me",
+    "skynet.be",
+    "pt.lu",
+]
 
 # branche AB → (poids, prime annuelle médiane, sigma, fréquence de sinistre annuelle, coût médian)
 BRANCHES_AB = {
@@ -101,8 +305,16 @@ DESCRIPTIONS = {
     "AUTO": ["Accrochage parking", "Bris de pare-brise", "Collision arrière", "Vol du véhicule"],
     "PRO": ["Perte d'exploitation", "Dégât des eaux local", "Responsabilité civile client", "Vol matériel"],
 }
-COMMENTS_AP = ["Rear-end collision", "Windshield chip", "Breakdown on highway", "Towing requested",
-               "Water leak", "Parking scratch", "Theft attempt", "Assistance abroad"]
+COMMENTS_AP = [
+    "Rear-end collision",
+    "Windshield chip",
+    "Breakdown on highway",
+    "Towing requested",
+    "Water leak",
+    "Parking scratch",
+    "Theft attempt",
+    "Assistance abroad",
+]
 
 
 @dataclass
@@ -121,7 +333,8 @@ class Personne:
 
 class Generator:
     def __init__(self, scale: float = 1.0, seed: int = 20261119, ref_date: date = date(2026, 10, 31)):
-        self.rng = random.Random(seed)
+        # données synthétiques, aucun usage cryptographique (bandit B311)
+        self.rng = random.Random(seed)  # nosec B311
         self.scale = max(0.05, scale)
         self.ref = ref_date
         self.n_ab = round(BASE_AB * self.scale)
@@ -145,7 +358,9 @@ class Generator:
 
     def rand_ts(self, start: date, end: date) -> datetime:
         d = self.rand_date(start, end)
-        return datetime(d.year, d.month, d.day, self.rng.randint(7, 21), self.rng.randint(0, 59), self.rng.randint(0, 59))
+        return datetime(
+            d.year, d.month, d.day, self.rng.randint(7, 21), self.rng.randint(0, 59), self.rng.randint(0, 59)
+        )
 
     # ------------------------------------------------------------------ personnes
     def new_person(self) -> Personne:
@@ -163,15 +378,25 @@ class Generator:
             tel = "04" + str(self.rng.randint(70, 99)) + "".join(str(self.rng.randint(0, 9)) for _ in range(6))
         else:
             tel = "0" + self.rng.choice("1234567") + "".join(str(self.rng.randint(0, 9)) for _ in range(8))
-        return Personne(prenom, nom, naissance, f"{local}@{self.rng.choice(DOMAINES)}", tel, self.rng.randint(1, 180),
-                        self.rng.choice(VOIES), cp, ville, pays)
+        return Personne(
+            prenom,
+            nom,
+            naissance,
+            f"{local}@{self.rng.choice(DOMAINES)}",
+            tel,
+            self.rng.randint(1, 180),
+            self.rng.choice(VOIES),
+            cp,
+            ville,
+            pays,
+        )
 
     def variant(self, p: Personne) -> Personne:
         """Même personne ressaisie : coquille possible, contact parfois changé, déménagement rare."""
         q = Personne(**p.__dict__)
         if self.chance(0.25) and len(q.nom) > 4:  # coquille de saisie
             i = self.rng.randint(1, len(q.nom) - 2)
-            q.nom = q.nom[:i] + q.nom[i + 1] + q.nom[i] + q.nom[i + 2:]
+            q.nom = q.nom[:i] + q.nom[i + 1] + q.nom[i] + q.nom[i + 2 :]
         if self.chance(0.3):
             q.email = q.email.replace("@", f"{self.rng.randint(1, 9)}@")
         if self.chance(0.25):
@@ -182,23 +407,22 @@ class Generator:
 
     # ------------------------------------------------------------------ mise en forme « source » (défauts)
     def fmt_phone(self, tel: str, pays: str) -> str:
+        """Saisie hétérogène du téléphone (formats constatés), dont 4 % de valeurs non normalisables."""
         style = self.rng.random()
         if pays == "LU":
             return f"+352 {tel}" if style < 0.6 else tel
-        if style < 0.35:
-            return " ".join(tel[i:i + 2] for i in range(0, 10, 2))
-        if style < 0.55:
-            return tel
-        if style < 0.70:
-            return ".".join(tel[i:i + 2] for i in range(0, 10, 2))
         code = "32" if pays == "BE" else "31" if pays == "NL" else "33"
-        if style < 0.85:
-            return f"+{code} {tel[1]} {tel[2:4]} {tel[4:6]} {tel[6:8]} {tel[8:10]}"
-        if style < 0.92:
-            return f"00{code}{tel[1:]}"
-        if style < 0.96:
-            return f"+{code} (0){tel[1:]}"
-        return self.rng.choice(["", "NC", "0000", "06 12 34"])  # non normalisable
+        pairs = [tel[i : i + 2] for i in range(0, 10, 2)]
+        formats = [  # (seuil cumulé, rendu)
+            (0.35, lambda: " ".join(pairs)),
+            (0.55, lambda: tel),
+            (0.70, lambda: ".".join(pairs)),
+            (0.85, lambda: f"+{code} {tel[1]} {tel[2:4]} {tel[4:6]} {tel[6:8]} {tel[8:10]}"),
+            (0.92, lambda: f"00{code}{tel[1:]}"),
+            (0.96, lambda: f"+{code} (0){tel[1:]}"),
+            (1.01, lambda: self.rng.choice(["", "NC", "0000", "06 12 34"])),  # non normalisable
+        ]
+        return next(render for seuil, render in formats if style < seuil)()
 
     def fmt_email(self, email: str) -> str | None:
         r = self.rng.random()
@@ -231,19 +455,37 @@ class Generator:
         paiements_ab = self._paiements_ab(contrats_ab)
         paiements_ap = self._paiements_ap(contrats_ap)
 
-        _write_db(out_dir / AB_DB, "oracle", {
-            "AB_CLIENT": [r for r, _ in persons_ab], "AB_CONTRAT": [r for r, _ in contrats_ab],
-            "AB_SINISTRE": sinistres_ab, "AB_PAIEMENT": paiements_ab,
-        })
-        _write_db(out_dir / AP_DB, "sqlserver", {
-            "AP_USERS": [r for r, _ in persons_ap], "AP_CONTRACTS": [r for r, _ in contrats_ap],
-            "AP_CLAIMS": sinistres_ap, "AP_PAYMENTS": paiements_ap,
-        })
+        _write_db(
+            out_dir / AB_DB,
+            "oracle",
+            {
+                "AB_CLIENT": [r for r, _ in persons_ab],
+                "AB_CONTRAT": [r for r, _ in contrats_ab],
+                "AB_SINISTRE": sinistres_ab,
+                "AB_PAIEMENT": paiements_ab,
+            },
+        )
+        _write_db(
+            out_dir / AP_DB,
+            "sqlserver",
+            {
+                "AP_USERS": [r for r, _ in persons_ap],
+                "AP_CONTRACTS": [r for r, _ in contrats_ap],
+                "AP_CLAIMS": sinistres_ap,
+                "AP_PAYMENTS": paiements_ap,
+            },
+        )
         (out_dir / TRUTH_FILE).write_text(json.dumps({"paires": self.truth}, indent=0), encoding="utf-8")
         return {
-            "AB_CLIENT": len(persons_ab), "AB_CONTRAT": len(contrats_ab), "AB_SINISTRE": len(sinistres_ab),
-            "AB_PAIEMENT": len(paiements_ab), "AP_USERS": len(persons_ap), "AP_CONTRACTS": len(contrats_ap),
-            "AP_CLAIMS": len(sinistres_ap), "AP_PAYMENTS": len(paiements_ap), "paires_doublons": len(self.truth),
+            "AB_CLIENT": len(persons_ab),
+            "AB_CONTRAT": len(contrats_ab),
+            "AB_SINISTRE": len(sinistres_ab),
+            "AB_PAIEMENT": len(paiements_ab),
+            "AP_USERS": len(persons_ap),
+            "AP_CONTRACTS": len(contrats_ap),
+            "AP_CLAIMS": len(sinistres_ap),
+            "AP_PAYMENTS": len(paiements_ap),
+            "paires_doublons": len(self.truth),
         }
 
     def _clients_ab(self) -> list[tuple[dict, Personne]]:
@@ -263,7 +505,8 @@ class Generator:
                 "AB_TELEPHONE": self.fmt_phone(p.telephone, p.pays),
                 "AB_ADRESSE": self.fmt_address(p, abbreviate=self.chance(0.4)),
                 "AB_CODE_POSTAL": p.cp if self.chance(0.98) else p.cp.lower(),
-                "AB_NUM_FISCAL": None if (p.pays == "FR" and self.chance(0.05)) or p.pays != "FR"
+                "AB_NUM_FISCAL": None
+                if (p.pays == "FR" and self.chance(0.05)) or p.pays != "FR"
                 else str(self.rng.randint(1, 3)) + "".join(str(self.rng.randint(0, 9)) for _ in range(12)),
                 "AB_DATE_CREATION": created.strftime("%Y-%m-%d %H:%M:%S.%f"),
                 "AB_STATUT_CLIENT": self.weighted({"ACTIF": 74, "INACTIF": 9, "RESILIE": 13, "PROSPECT": 4}),
@@ -317,7 +560,8 @@ class Generator:
                 "AP_STREET_ADDRESS": self.fmt_address(p, abbreviate=self.chance(0.15)),
                 "AP_ZIP_CODE": p.cp,
                 "AP_CREATED_AT": self.rand_ts(date(2009, 1, 1), self.ref - timedelta(days=10)).strftime(
-                    "%Y-%m-%d %H:%M:%S"),
+                    "%Y-%m-%d %H:%M:%S"
+                ),
                 "AP_CUSTOMER_STATUS": status if self.chance(0.9) else status.capitalize(),
                 "AP_LOYALTY_SCORE": None if self.chance(0.04) else self.rng.randint(0, 100),
             }
@@ -334,7 +578,9 @@ class Generator:
             fin = self.rand_date(min(debut + timedelta(days=200), self.ref), self.ref)
         else:
             # échéance annuelle tacitement reconduite : prochaine date anniversaire
-            years = max(1, self.ref.year - debut.year + (1 if (self.ref.month, self.ref.day) >= (debut.month, debut.day) else 0))
+            years = max(
+                1, self.ref.year - debut.year + (1 if (self.ref.month, self.ref.day) >= (debut.month, debut.day) else 0)
+            )
             fin = _add_years(debut, years)
         return debut, fin
 
@@ -356,12 +602,21 @@ class Generator:
                 if self.chance(0.004):
                     prime = self.rng.choice([0.0, -prime])
                 client_id = client["AB_CLIENT_ID"] if not self.chance(0.003) else 999000 + seq  # orphelin
-                rows.append(({
-                    "AB_POLICY_NUMBER": f"AB-POL-{seq:07d}", "AB_CLIENT_ID": client_id, "AB_TYPE_ASSURANCE": branche,
-                    "AB_DATE_DEBUT": debut.isoformat(), "AB_DATE_FIN": fin.isoformat() if fin else None,
-                    "AB_PRIME_ANNUELLE": prime, "AB_STATUT_CONTRAT": statut,
-                    "AB_AGENCE_ID": self.rng.randint(1, 48),
-                }, branche))
+                rows.append(
+                    (
+                        {
+                            "AB_POLICY_NUMBER": f"AB-POL-{seq:07d}",
+                            "AB_CLIENT_ID": client_id,
+                            "AB_TYPE_ASSURANCE": branche,
+                            "AB_DATE_DEBUT": debut.isoformat(),
+                            "AB_DATE_FIN": fin.isoformat() if fin else None,
+                            "AB_PRIME_ANNUELLE": prime,
+                            "AB_STATUT_CONTRAT": statut,
+                            "AB_AGENCE_ID": self.rng.randint(1, 48),
+                        },
+                        branche,
+                    )
+                )
                 seq += 1
         return rows
 
@@ -375,19 +630,29 @@ class Generator:
             for _ in range(self.rng.choices([1, 2, 3], weights=[66, 27, 7])[0]):
                 produit = self.weighted({k: v[0] for k, v in PRODUITS_AP.items()})
                 _, med, sigma, *_ = PRODUITS_AP[produit]
-                state = "cancelled" if user["AP_CUSTOMER_STATUS"].lower() == "churned" else self.weighted(
-                    {"active": 84, "cancelled": 10, "suspended": 3, "pending": 3})
+                state = (
+                    "cancelled"
+                    if user["AP_CUSTOMER_STATUS"].lower() == "churned"
+                    else self.weighted({"active": 84, "cancelled": 10, "suspended": 3, "pending": 3})
+                )
                 debut, fin = self._contract_dates(user["AP_CREATED_AT"], state)
                 state_txt = state.capitalize() if self.chance(0.7) else state.upper() if self.chance(0.5) else state
                 user_id = user["AP_USER_ID"] if not self.chance(0.003) else 90000 + seq
-                rows.append(({
-                    "AP_CONTRACT_REF": f"APC{seq:08d}", "AP_USER_ID": user_id, "AP_PRODUCT_CODE": produit,
-                    "AP_START_DATE": f"{debut.isoformat()} 00:00:00",
-                    "AP_END_DATE": f"{fin.isoformat()} 00:00:00" if fin else None,
-                    "AP_MONTHLY_PREMIUM": self.lognormal(med, sigma, 5, 900) if not self.chance(0.004) else 0.0,
-                    "AP_CONTRACT_STATE": state_txt,
-                    "AP_BROKER_CODE": self.rng.choice(brokers) if self.chance(0.35) else None,
-                }, produit))
+                rows.append(
+                    (
+                        {
+                            "AP_CONTRACT_REF": f"APC{seq:08d}",
+                            "AP_USER_ID": user_id,
+                            "AP_PRODUCT_CODE": produit,
+                            "AP_START_DATE": f"{debut.isoformat()} 00:00:00",
+                            "AP_END_DATE": f"{fin.isoformat()} 00:00:00" if fin else None,
+                            "AP_MONTHLY_PREMIUM": self.lognormal(med, sigma, 5, 900) if not self.chance(0.004) else 0.0,
+                            "AP_CONTRACT_STATE": state_txt,
+                            "AP_BROKER_CODE": self.rng.choice(brokers) if self.chance(0.35) else None,
+                        },
+                        produit,
+                    )
+                )
                 seq += 1
         return rows
 
@@ -405,20 +670,27 @@ class Generator:
                 montant = self.lognormal(cout, 0.9, 40, 250000)
                 age_days = (self.ref - when.date()).days
                 if age_days < 45:
-                    statut = self.weighted({"OPEN": 60, "UNDER_REVIEW": 40}) if src == "AP" else self.weighted(
-                        {"OUVERT": 60, "EN_COURS": 40})
+                    statut = (
+                        self.weighted({"OPEN": 60, "UNDER_REVIEW": 40})
+                        if src == "AP"
+                        else self.weighted({"OUVERT": 60, "EN_COURS": 40})
+                    )
                 elif src == "AB":
                     statut = self.weighted({"CLOS": 78, "REFUSE": 9, "EN_COURS": 13})
                 else:
                     statut = self.weighted({"SETTLED": 76, "REJECTED": 11, "UNDER_REVIEW": 13})
                 if src == "AB":
                     ref = contrat["AB_POLICY_NUMBER"] if not self.chance(0.004) else f"AB-POL-9{seq:06d}"
-                    rows.append({
-                        "AB_CLAIM_ID": 700000 + seq, "AB_POLICY_NUMBER": ref,
-                        "AB_DATE_SINISTRE": when.strftime("%Y-%m-%d %H:%M:%S.%f"),
-                        "AB_MONTANT_ESTIME": montant if not self.chance(0.002) else -montant,
-                        "AB_STATUT_SINISTRE": statut, "AB_DESCRIPTION": self.rng.choice(DESCRIPTIONS[code]),
-                    })
+                    rows.append(
+                        {
+                            "AB_CLAIM_ID": 700000 + seq,
+                            "AB_POLICY_NUMBER": ref,
+                            "AB_DATE_SINISTRE": when.strftime("%Y-%m-%d %H:%M:%S.%f"),
+                            "AB_MONTANT_ESTIME": montant if not self.chance(0.002) else -montant,
+                            "AB_STATUT_SINISTRE": statut,
+                            "AB_DESCRIPTION": self.rng.choice(DESCRIPTIONS[code]),
+                        }
+                    )
                 else:
                     ref = contrat["AP_CONTRACT_REF"] if not self.chance(0.004) else f"APC9{seq:07d}"
                     r = self.rng.random()
@@ -432,12 +704,17 @@ class Generator:
                         txt = self.rng.choice(["N/A", "", "2025-13-45 10:00:00"])
                     suspect = self.chance(0.05)  # dossiers atypiques : score élevé
                     fraud = round(min(99.99, max(0.0, self.rng.gauss(74 if suspect else 18, 9 if suspect else 12))), 2)
-                    rows.append({
-                        "AP_SINISTRE_NUM": 30000 + seq, "AP_CONTRACT_REF": ref, "AP_INCIDENT_DATE": txt,
-                        "AP_ESTIMATED_AMOUNT": montant, "AP_CLAIM_STATUS": statut,
-                        "AP_CLAIM_COMMENT": self.rng.choice(COMMENTS_AP),
-                        "AP_FRAUD_SCORE": fraud if self.chance(0.97) else None,
-                    })
+                    rows.append(
+                        {
+                            "AP_SINISTRE_NUM": 30000 + seq,
+                            "AP_CONTRACT_REF": ref,
+                            "AP_INCIDENT_DATE": txt,
+                            "AP_ESTIMATED_AMOUNT": montant,
+                            "AP_CLAIM_STATUS": statut,
+                            "AP_CLAIM_COMMENT": self.rng.choice(COMMENTS_AP),
+                            "AP_FRAUD_SCORE": fraud if self.chance(0.97) else None,
+                        }
+                    )
                 seq += 1
         return rows
 
@@ -449,26 +726,47 @@ class Generator:
             if prime <= 0 or contrat["AB_STATUT_CONTRAT"] == "EN_ATTENTE":
                 continue
             months = self.rng.choices([1, 3, 12], weights=[58, 14, 28])[0]
-            mode = "PRELEVEMENT" if months == 1 else self.weighted({"PRELEVEMENT": 40, "CB": 30, "CHEQUE": 18,
-                                                                    "VIREMENT": 12})
+            mode = (
+                "PRELEVEMENT"
+                if months == 1
+                else self.weighted({"PRELEVEMENT": 40, "CB": 30, "CHEQUE": 18, "VIREMENT": 12})
+            )
             debut = date.fromisoformat(contrat["AB_DATE_DEBUT"])
             fin = date.fromisoformat(contrat["AB_DATE_FIN"]) if contrat["AB_DATE_FIN"] else self.ref
             late = contrat["AB_STATUT_CONTRAT"] == "RESILIE" and self.chance(0.03)
             for due in _schedule(debut, min(fin, self.ref), months, PAY_FROM):
                 paid = due + timedelta(days=self.rng.randint(0, 6))
-                rows.append({"AB_PAYMENT_ID": seq, "AB_POLICY_NUMBER": contrat["AB_POLICY_NUMBER"],
-                             "AB_DATE_PAIEMENT": paid.isoformat(), "AB_MONTANT": round(prime * months / 12, 2),
-                             "AB_MODE_PAIEMENT": mode})
+                rows.append(
+                    {
+                        "AB_PAYMENT_ID": seq,
+                        "AB_POLICY_NUMBER": contrat["AB_POLICY_NUMBER"],
+                        "AB_DATE_PAIEMENT": paid.isoformat(),
+                        "AB_MONTANT": round(prime * months / 12, 2),
+                        "AB_MODE_PAIEMENT": mode,
+                    }
+                )
                 seq += 1
             if late and fin < self.ref - timedelta(days=60):  # régularisation tardive (DQ15)
-                rows.append({"AB_PAYMENT_ID": seq, "AB_POLICY_NUMBER": contrat["AB_POLICY_NUMBER"],
-                             "AB_DATE_PAIEMENT": (fin + timedelta(days=self.rng.randint(40, 55))).isoformat(),
-                             "AB_MONTANT": round(prime / 12, 2), "AB_MODE_PAIEMENT": mode})
+                rows.append(
+                    {
+                        "AB_PAYMENT_ID": seq,
+                        "AB_POLICY_NUMBER": contrat["AB_POLICY_NUMBER"],
+                        "AB_DATE_PAIEMENT": (fin + timedelta(days=self.rng.randint(40, 55))).isoformat(),
+                        "AB_MONTANT": round(prime / 12, 2),
+                        "AB_MODE_PAIEMENT": mode,
+                    }
+                )
                 seq += 1
         for _ in range(max(1, round(8 * self.scale))):  # paiements orphelins (DQ14)
-            rows.append({"AB_PAYMENT_ID": seq, "AB_POLICY_NUMBER": f"AB-POL-8{seq:06d}",
-                         "AB_DATE_PAIEMENT": self.rand_date(PAY_FROM, self.ref).isoformat(),
-                         "AB_MONTANT": self.lognormal(60, 0.5, 5, 900), "AB_MODE_PAIEMENT": "VIREMENT"})
+            rows.append(
+                {
+                    "AB_PAYMENT_ID": seq,
+                    "AB_POLICY_NUMBER": f"AB-POL-8{seq:06d}",
+                    "AB_DATE_PAIEMENT": self.rand_date(PAY_FROM, self.ref).isoformat(),
+                    "AB_MONTANT": self.lognormal(60, 0.5, 5, 900),
+                    "AB_MODE_PAIEMENT": "VIREMENT",
+                }
+            )
             seq += 1
         return rows
 
@@ -486,12 +784,24 @@ class Generator:
                 status = self.weighted({"SUCCEEDED": 95.2, "FAILED": 3.1, "REFUNDED": 0.7, "PENDING": 1.0})
                 if (self.ref - due).days > 10 and status == "PENDING":
                     status = "SUCCEEDED"
-                ts = datetime(due.year, due.month, due.day, self.rng.randint(0, 23), self.rng.randint(0, 59),
-                              self.rng.randint(0, 59))
-                rows.append({"AP_PAYMENT_REF": str(uuid.UUID(int=self.rng.getrandbits(128), version=4)).upper(),
-                             "AP_CONTRACT_REF": contrat["AP_CONTRACT_REF"],
-                             "AP_PAYMENT_DATETIME": ts.strftime("%Y-%m-%d %H:%M:%S"), "AP_AMOUNT_PAID": mensuel,
-                             "AP_PAYMENT_CHANNEL": channel, "AP_TRANSACTION_STATUS": status})
+                ts = datetime(
+                    due.year,
+                    due.month,
+                    due.day,
+                    self.rng.randint(0, 23),
+                    self.rng.randint(0, 59),
+                    self.rng.randint(0, 59),
+                )
+                rows.append(
+                    {
+                        "AP_PAYMENT_REF": str(uuid.UUID(int=self.rng.getrandbits(128), version=4)).upper(),
+                        "AP_CONTRACT_REF": contrat["AP_CONTRACT_REF"],
+                        "AP_PAYMENT_DATETIME": ts.strftime("%Y-%m-%d %H:%M:%S"),
+                        "AP_AMOUNT_PAID": mensuel,
+                        "AP_PAYMENT_CHANNEL": channel,
+                        "AP_TRANSACTION_STATUS": status,
+                    }
+                )
         return rows
 
 
@@ -537,24 +847,24 @@ def _poisson(rng: random.Random, lam: float) -> int:
 
 
 DDL_SQLITE = {
-    "AB_CLIENT": "AB_CLIENT_ID INTEGER PRIMARY KEY, AB_NOM TEXT, AB_PRENOM TEXT, AB_DATE_NAISSANCE TEXT, AB_EMAIL TEXT, "
-                 "AB_TELEPHONE TEXT, AB_ADRESSE TEXT, AB_CODE_POSTAL TEXT, AB_NUM_FISCAL TEXT, AB_DATE_CREATION TEXT, "
-                 "AB_STATUT_CLIENT TEXT",
-    "AB_CONTRAT": "AB_POLICY_NUMBER TEXT PRIMARY KEY, AB_CLIENT_ID INTEGER, AB_TYPE_ASSURANCE TEXT, AB_DATE_DEBUT TEXT, "
-                  "AB_DATE_FIN TEXT, AB_PRIME_ANNUELLE NUMERIC, AB_STATUT_CONTRAT TEXT, AB_AGENCE_ID INTEGER",
+    "AB_CLIENT": "AB_CLIENT_ID INTEGER PRIMARY KEY, AB_NOM TEXT, AB_PRENOM TEXT, AB_DATE_NAISSANCE TEXT, "
+    "AB_EMAIL TEXT, AB_TELEPHONE TEXT, AB_ADRESSE TEXT, AB_CODE_POSTAL TEXT, AB_NUM_FISCAL TEXT, "
+    "AB_DATE_CREATION TEXT, AB_STATUT_CLIENT TEXT",
+    "AB_CONTRAT": "AB_POLICY_NUMBER TEXT PRIMARY KEY, AB_CLIENT_ID INTEGER, AB_TYPE_ASSURANCE TEXT, "
+    "AB_DATE_DEBUT TEXT, AB_DATE_FIN TEXT, AB_PRIME_ANNUELLE NUMERIC, AB_STATUT_CONTRAT TEXT, AB_AGENCE_ID INTEGER",
     "AB_SINISTRE": "AB_CLAIM_ID INTEGER PRIMARY KEY, AB_POLICY_NUMBER TEXT, AB_DATE_SINISTRE TEXT, "
-                   "AB_MONTANT_ESTIME NUMERIC, AB_STATUT_SINISTRE TEXT, AB_DESCRIPTION TEXT",
+    "AB_MONTANT_ESTIME NUMERIC, AB_STATUT_SINISTRE TEXT, AB_DESCRIPTION TEXT",
     "AB_PAIEMENT": "AB_PAYMENT_ID INTEGER PRIMARY KEY, AB_POLICY_NUMBER TEXT, AB_DATE_PAIEMENT TEXT, "
-                   "AB_MONTANT NUMERIC, AB_MODE_PAIEMENT TEXT",
+    "AB_MONTANT NUMERIC, AB_MODE_PAIEMENT TEXT",
     "AP_USERS": "AP_USER_ID INTEGER PRIMARY KEY, AP_FULL_NAME TEXT, AP_BIRTH_DATE TEXT, AP_MAIL_ADDRESS TEXT, "
-                "AP_PHONE_NUMBER TEXT, AP_STREET_ADDRESS TEXT, AP_ZIP_CODE TEXT, AP_CREATED_AT TEXT, "
-                "AP_CUSTOMER_STATUS TEXT, AP_LOYALTY_SCORE INTEGER",
+    "AP_PHONE_NUMBER TEXT, AP_STREET_ADDRESS TEXT, AP_ZIP_CODE TEXT, AP_CREATED_AT TEXT, "
+    "AP_CUSTOMER_STATUS TEXT, AP_LOYALTY_SCORE INTEGER",
     "AP_CONTRACTS": "AP_CONTRACT_REF TEXT PRIMARY KEY, AP_USER_ID INTEGER, AP_PRODUCT_CODE TEXT, AP_START_DATE TEXT, "
-                    "AP_END_DATE TEXT, AP_MONTHLY_PREMIUM NUMERIC, AP_CONTRACT_STATE TEXT, AP_BROKER_CODE TEXT",
+    "AP_END_DATE TEXT, AP_MONTHLY_PREMIUM NUMERIC, AP_CONTRACT_STATE TEXT, AP_BROKER_CODE TEXT",
     "AP_CLAIMS": "AP_SINISTRE_NUM INTEGER PRIMARY KEY, AP_CONTRACT_REF TEXT, AP_INCIDENT_DATE TEXT, "
-                 "AP_ESTIMATED_AMOUNT NUMERIC, AP_CLAIM_STATUS TEXT, AP_CLAIM_COMMENT TEXT, AP_FRAUD_SCORE NUMERIC",
+    "AP_ESTIMATED_AMOUNT NUMERIC, AP_CLAIM_STATUS TEXT, AP_CLAIM_COMMENT TEXT, AP_FRAUD_SCORE NUMERIC",
     "AP_PAYMENTS": "AP_PAYMENT_REF TEXT PRIMARY KEY, AP_CONTRACT_REF TEXT, AP_PAYMENT_DATETIME TEXT, "
-                   "AP_AMOUNT_PAID NUMERIC, AP_PAYMENT_CHANNEL TEXT, AP_TRANSACTION_STATUS TEXT",
+    "AP_AMOUNT_PAID NUMERIC, AP_PAYMENT_CHANNEL TEXT, AP_TRANSACTION_STATUS TEXT",
 }
 
 
@@ -568,10 +878,10 @@ def _write_db(path: Path, dialect: str, tables: dict[str, list[dict]]) -> None:
             con.execute(f"CREATE TABLE {name} ({DDL_SQLITE[name]})")
             if rows:
                 cols = list(rows[0])
-                con.executemany(
-                    f"INSERT INTO {name} ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})",  # noqa: S608
-                    [tuple(r[c] for c in cols) for r in rows],
-                )
+                from fusion.sqlsafe import insert_sql
+
+                columns = [c.split()[0] for c in DDL_SQLITE[name].split(", ")]
+                con.executemany(insert_sql(name, cols, DDL_SQLITE, columns), [tuple(r[c] for c in cols) for r in rows])
         con.execute("CREATE TABLE _META (cle TEXT, valeur TEXT)")
         con.execute("INSERT INTO _META VALUES ('dialecte_simule', ?)", (dialect,))
         con.commit()

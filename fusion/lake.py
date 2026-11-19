@@ -32,8 +32,16 @@ def _lines(rows: Iterable[dict[str, Any]]) -> tuple[str, int]:
 
 
 def _manifest(table: str, n: int, columns: list[str]) -> str:
-    return json.dumps({"table": table, "lignes": n, "colonnes": columns, "format": "jsonl",
-                       "ecrit_le": datetime.now(UTC).isoformat(timespec="seconds")}, ensure_ascii=False)
+    return json.dumps(
+        {
+            "table": table,
+            "lignes": n,
+            "colonnes": columns,
+            "format": "jsonl",
+            "ecrit_le": datetime.now(UTC).isoformat(timespec="seconds"),
+        },
+        ensure_ascii=False,
+    )
 
 
 class Lake(Protocol):
@@ -112,10 +120,11 @@ class WebHdfsLake:
         return f"{self.base}{urllib.parse.quote(path)}?{query}"
 
     def _request(self, method: str, url: str, data: bytes | None = None) -> bytes:
-        req = urllib.request.Request(url, data=data, method=method)  # noqa: S310 - schéma vérifié dans _url
+        # schéma http(s) vérifié dans _url (bandit B310)
+        req = urllib.request.Request(url, data=data, method=method)  # nosec B310  # noqa: S310
         if data is not None:
             req.add_header("Content-Type", "application/octet-stream")
-        with urllib.request.urlopen(req, timeout=self.timeout) as resp:  # noqa: S310
+        with urllib.request.urlopen(req, timeout=self.timeout) as resp:  # nosec B310  # noqa: S310
             return resp.read()
 
     def _put_file(self, path: str, content: bytes) -> None:
@@ -171,7 +180,7 @@ class WebHdfsLake:
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: PLR0917 - signature imposée par urllib
         return None
 
 

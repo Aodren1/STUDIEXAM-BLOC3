@@ -13,7 +13,10 @@ from fusion.web import LoginThrottle, create_app, load_accounts
 
 GOLD = {
     "date_reference": "2026-10-31",
-    **{s: {"kpi": {"ok": s}} for s in ("synthese", "clients", "contrats", "sinistres", "finances", "doublons", "qualite")},
+    **{
+        s: {"kpi": {"ok": s}}
+        for s in ("synthese", "clients", "contrats", "sinistres", "finances", "doublons", "qualite")
+    },
 }
 
 
@@ -24,10 +27,14 @@ def app(tmp_path, monkeypatch):
     settings = Settings(data_dir=tmp_path)
     settings.gold_path.parent.mkdir(parents=True)
     settings.gold_path.write_text(json.dumps(GOLD), encoding="utf-8")
-    LocalLake(settings.lake_dir).write_table("gold", "paires_doublons_detail", [
-        {"uid_a": "AB-1", "uid_b": "AP-2", "niveau": "PROBABLE", "score": 0.5},
-        {"uid_a": "AB-3", "uid_b": "AP-4", "niveau": "CERTAIN", "score": 0.9},
-    ])
+    LocalLake(settings.lake_dir).write_table(
+        "gold",
+        "paires_doublons_detail",
+        [
+            {"uid_a": "AB-1", "uid_b": "AP-2", "niveau": "PROBABLE", "score": 0.5},
+            {"uid_a": "AB-3", "uid_b": "AP-4", "niveau": "CERTAIN", "score": 0.9},
+        ],
+    )
     application = create_app(settings)
     application.config["TESTING"] = True
     return application
@@ -39,8 +46,9 @@ def _csrf(client, path="/connexion"):
 
 
 def _login(client, user, pwd):
-    return client.post("/connexion", data={"identifiant": user, "mot_de_passe": pwd, "csrf": _csrf(client),
-                                            "suivant": "/"})
+    return client.post(
+        "/connexion", data={"identifiant": user, "mot_de_passe": pwd, "csrf": _csrf(client), "suivant": "/"}
+    )
 
 
 def test_redirection_vers_la_connexion(app):
@@ -146,8 +154,10 @@ def test_entetes_de_securite_et_deconnexion(app):
 
 def test_redirection_ouverte_refusee(app):
     c = app.test_client()
-    r = c.post("/connexion", data={"identifiant": "admin", "mot_de_passe": "admin-test-1", "csrf": _csrf(c),
-                                   "suivant": "//evil.example/"})
+    r = c.post(
+        "/connexion",
+        data={"identifiant": "admin", "mot_de_passe": "admin-test-1", "csrf": _csrf(c), "suivant": "//evil.example/"},
+    )
     assert r.headers["Location"] == "/"
 
 

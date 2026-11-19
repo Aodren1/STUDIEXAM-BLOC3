@@ -18,10 +18,14 @@ from pyspark.sql import functions as F
 from pyspark.sql import types as T
 
 MAX_BLOC = 50
-PAIR_SCHEMA = T.StructType([
-    T.StructField("uid_a", T.StringType()), T.StructField("uid_b", T.StringType()),
-    T.StructField("score", T.DoubleType()), T.StructField("niveau", T.StringType()),
-])
+PAIR_SCHEMA = T.StructType(
+    [
+        T.StructField("uid_a", T.StringType()),
+        T.StructField("uid_b", T.StringType()),
+        T.StructField("score", T.DoubleType()),
+        T.StructField("niveau", T.StringType()),
+    ]
+)
 
 
 def _name_key(prenom: str | None, nom: str | None) -> str:
@@ -33,26 +37,41 @@ def _name_key(prenom: str | None, nom: str | None) -> str:
 def candidate_pairs(clients: DataFrame) -> DataFrame:
     name_key_udf = F.udf(_name_key, T.StringType())
     c = clients.withColumn("nom_cle", name_key_udf("prenom", "nom"))
-    keys = c.select("client_uid", F.explode(F.array_compact(F.array(
-        F.when(F.col("email").isNotNull(), F.concat(F.lit("e:"), "email")),
-        F.when(F.col("telephone").isNotNull(), F.concat(F.lit("t:"), "telephone")),
-        F.when((F.col("nom_cle") != "") & F.col("date_naissance").isNotNull(),
-               F.concat(F.lit("n:"), "nom_cle", F.lit("|"), "date_naissance")),
-        F.when((F.col("nom_cle") != "") & F.col("code_postal").isNotNull(),
-               F.concat(F.lit("a:"), "nom_cle", F.lit("|"), "code_postal")),
-    ))).alias("cle"))
+    keys = c.select(
+        "client_uid",
+        F.explode(
+            F.array_compact(
+                F.array(
+                    F.when(F.col("email").isNotNull(), F.concat(F.lit("e:"), "email")),
+                    F.when(F.col("telephone").isNotNull(), F.concat(F.lit("t:"), "telephone")),
+                    F.when(
+                        (F.col("nom_cle") != "") & F.col("date_naissance").isNotNull(),
+                        F.concat(F.lit("n:"), "nom_cle", F.lit("|"), "date_naissance"),
+                    ),
+                    F.when(
+                        (F.col("nom_cle") != "") & F.col("code_postal").isNotNull(),
+                        F.concat(F.lit("a:"), "nom_cle", F.lit("|"), "code_postal"),
+                    ),
+                )
+            )
+        ).alias("cle"),
+    )
     sizes = keys.groupBy("cle").count().filter(F.col("count") <= MAX_BLOC)
     keys = keys.join(sizes.select("cle"), "cle")
     a, b = keys.alias("a"), keys.alias("b")
-    return (a.join(b, (F.col("a.cle") == F.col("b.cle")) & (F.col("a.client_uid") < F.col("b.client_uid")))
-            .select(F.col("a.client_uid").alias("uid_a"), F.col("b.client_uid").alias("uid_b")).distinct())
+    return (
+        a.join(b, (F.col("a.cle") == F.col("b.cle")) & (F.col("a.client_uid") < F.col("b.client_uid")))
+        .select(F.col("a.client_uid").alias("uid_a"), F.col("b.client_uid").alias("uid_b"))
+        .distinct()
+    )
 
 
 def score_pairs(spark: SparkSession, clients: DataFrame, pairs: DataFrame) -> DataFrame:
     cols = ["client_uid", "nom", "prenom", "date_naissance", "email", "telephone", "adresse", "code_postal"]
     small = clients.select(*cols)
-    joined = (pairs.join(small.select(*[F.col(x).alias(f"a_{x}") for x in cols]), F.col("uid_a") == F.col("a_client_uid"))
-              .join(small.select(*[F.col(x).alias(f"b_{x}") for x in cols]), F.col("uid_b") == F.col("b_client_uid")))
+    joined = pairs.join(
+        small.select(*[F.col(x).alias(f"a_{x}") for x in cols]), F.col("uid_a") == F.col("a_client_uid")
+    ).join(small.select(*[F.col(x).alias(f"b_{x}") for x in cols]), F.col("uid_b") == F.col("b_client_uid"))
 
     def score_partition(rows):
         from fusion.cleaning import name_key

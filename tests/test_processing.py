@@ -23,10 +23,24 @@ REF = date(2026, 10, 31)
 
 
 def _client(uid, **kw):
-    base = {"client_uid": uid, "source": uid[:2], "source_id": uid[3:], "nom": "DUPONT", "prenom": "Marie",
-            "date_naissance": "1985-04-12", "email": None, "telephone": None, "adresse": "1 RUE PASTEUR",
-            "code_postal": "35000", "pays": "FR", "region": "Bretagne", "date_creation": "2020-01-01 00:00:00",
-            "statut": "ACTIF", "num_fiscal": None, "score_fidelite": None}
+    base = {
+        "client_uid": uid,
+        "source": uid[:2],
+        "source_id": uid[3:],
+        "nom": "DUPONT",
+        "prenom": "Marie",
+        "date_naissance": "1985-04-12",
+        "email": None,
+        "telephone": None,
+        "adresse": "1 RUE PASTEUR",
+        "code_postal": "35000",
+        "pays": "FR",
+        "region": "Bretagne",
+        "date_creation": "2020-01-01 00:00:00",
+        "statut": "ACTIF",
+        "num_fiscal": None,
+        "score_fidelite": None,
+    }
     return {**base, **kw}
 
 
@@ -40,10 +54,28 @@ def test_enveloppe_valide():
 def test_silver_quarantaine_des_messages_illisibles(tmp_path):
     bus = FileBus(tmp_path / "bus", partitions=1)
     bus.produce_raw("src.ab.client", "AB-1", "{json tronqué")
-    bus.produce("src.ab.client", "AB-2", envelope("AB", "AB_CLIENT", "AB-2", {
-        "AB_CLIENT_ID": 2, "AB_NOM": "MARTIN", "AB_PRENOM": "Léa", "AB_DATE_NAISSANCE": "1990-01-01",
-        "AB_EMAIL": "lea@free.fr", "AB_TELEPHONE": "0102030405", "AB_ADRESSE": "1 rue X", "AB_CODE_POSTAL": "75011",
-        "AB_NUM_FISCAL": "1", "AB_DATE_CREATION": "2020-01-01 00:00:00", "AB_STATUT_CLIENT": "ACTIF"}))
+    bus.produce(
+        "src.ab.client",
+        "AB-2",
+        envelope(
+            "AB",
+            "AB_CLIENT",
+            "AB-2",
+            {
+                "AB_CLIENT_ID": 2,
+                "AB_NOM": "MARTIN",
+                "AB_PRENOM": "Léa",
+                "AB_DATE_NAISSANCE": "1990-01-01",
+                "AB_EMAIL": "lea@free.fr",
+                "AB_TELEPHONE": "0102030405",
+                "AB_ADRESSE": "1 rue X",
+                "AB_CODE_POSTAL": "75011",
+                "AB_NUM_FISCAL": "1",
+                "AB_DATE_CREATION": "2020-01-01 00:00:00",
+                "AB_STATUT_CLIENT": "ACTIF",
+            },
+        ),
+    )
     lake = LocalLake(tmp_path / "lake")
     res = run_silver(bus, MappingSpec.load(), lake, "r1")
     assert res.quarantaine == 1 and res.store.count("client") == 1
@@ -59,10 +91,14 @@ def test_orphelins_en_cascade_et_paiement_tardif():
     store.add("contrat", {"contrat_uid": "AB-C1", "client_uid": "AB-1", "source": "AB", "date_fin": "2025-01-31"})
     store.add("contrat", {"contrat_uid": "AB-C2", "client_uid": "AB-999", "source": "AB", "date_fin": None})
     store.add("sinistre", {"sinistre_uid": "AB-S1", "contrat_uid": "AB-C2", "source": "AB"})
-    store.add("paiement", {"paiement_uid": "AB-P1", "contrat_uid": "AB-C1", "source": "AB",
-                           "date_paiement": "2025-03-20 00:00:00"})
-    store.add("paiement", {"paiement_uid": "AB-P2", "contrat_uid": "AB-C1", "source": "AB",
-                           "date_paiement": "2025-02-15 00:00:00"})
+    store.add(
+        "paiement",
+        {"paiement_uid": "AB-P1", "contrat_uid": "AB-C1", "source": "AB", "date_paiement": "2025-03-20 00:00:00"},
+    )
+    store.add(
+        "paiement",
+        {"paiement_uid": "AB-P2", "contrat_uid": "AB-C1", "source": "AB", "date_paiement": "2025-02-15 00:00:00"},
+    )
     log = QualityLog()
     check_integrity(store, log)
     assert log.counts() == {"DQ06": 1, "DQ10": 1, "DQ15": 1}
@@ -73,12 +109,15 @@ def test_orphelins_en_cascade_et_paiement_tardif():
 
 
 # ---------------------------------------------------------------------------- doublons
-@pytest.mark.parametrize(("a", "b", "low", "high"), [
-    ("MARTHA", "MARHTA", 0.96, 0.97),
-    ("DUPONT", "DUPONT", 1.0, 1.0),
-    ("ABC", "XYZ", 0.0, 0.0),
-    ("", "ABC", 0.0, 0.0),
-])
+@pytest.mark.parametrize(
+    ("a", "b", "low", "high"),
+    [
+        ("MARTHA", "MARHTA", 0.96, 0.97),
+        ("DUPONT", "DUPONT", 1.0, 1.0),
+        ("ABC", "XYZ", 0.0, 0.0),
+        ("", "ABC", 0.0, 0.0),
+    ],
+)
 def test_jaro_winkler(a, b, low, high):
     assert low <= d.jaro_winkler(a, b) <= high
 
@@ -100,8 +139,14 @@ def test_score_et_niveaux():
 def test_dedoublonnage_bout_en_bout():
     clients = [
         _client("AB-1", email="marie@x.fr", telephone="+33102030405"),
-        _client("AP-7", nom="DUPONT", prenom="Marie", email="marie@x.fr", telephone="+33102030405",
-                date_creation="2024-01-01 00:00:00"),
+        _client(
+            "AP-7",
+            nom="DUPONT",
+            prenom="Marie",
+            email="marie@x.fr",
+            telephone="+33102030405",
+            date_creation="2024-01-01 00:00:00",
+        ),
         _client("AP-8", nom="DUPONT", prenom="Marie", date_naissance="1985-04-12", email=None),  # probable
         _client("AB-2", nom="MARTIN", prenom="Paul", date_naissance="1970-01-01", code_postal="13001"),
     ]
@@ -194,8 +239,12 @@ def test_entrepot_respecte_le_mcd(jeu_complet):
         n_p = con.execute("SELECT COUNT(*) FROM personne").fetchone()[0]
         assert n_p <= n_cs
         # chaque contrat de l'entrepôt a un client ; les orphelins sont en quarantaine avec leur motif
-        assert con.execute("SELECT COUNT(*) FROM contrat c LEFT JOIN client_source s USING (client_uid) "
-                           "WHERE s.client_uid IS NULL").fetchone()[0] == 0
+        assert (
+            con.execute(
+                "SELECT COUNT(*) FROM contrat c LEFT JOIN client_source s USING (client_uid) WHERE s.client_uid IS NULL"
+            ).fetchone()[0]
+            == 0
+        )
         motifs = {r[0] for r in con.execute("SELECT DISTINCT motif FROM quarantaine")}
         assert motifs <= {"DQ06", "DQ10", "DQ14"}
         assert con.execute("SELECT COUNT(*) FROM paire_doublon WHERE uid_a >= uid_b").fetchone()[0] == 0
@@ -204,11 +253,27 @@ def test_entrepot_respecte_le_mcd(jeu_complet):
 
 
 def test_entrepot_refuse_une_violation_de_cardinalite(tmp_path):
-    tables = {"client": [], "contrat": [{"contrat_uid": "AB-C1", "source": "AB", "source_id": "C1",
-                                         "client_uid": "AB-404", "code_produit": "AUTO", "code_distributeur": None,
-                                         "date_debut": None, "date_fin": None, "prime_annuelle": 100.0,
-                                         "statut": "ACTIF", "canal": "AGENCE", "est_orphelin": False}],
-              "sinistre": [], "paiement": []}
+    tables = {
+        "client": [],
+        "contrat": [
+            {
+                "contrat_uid": "AB-C1",
+                "source": "AB",
+                "source_id": "C1",
+                "client_uid": "AB-404",
+                "code_produit": "AUTO",
+                "code_distributeur": None,
+                "date_debut": None,
+                "date_fin": None,
+                "prime_annuelle": 100.0,
+                "statut": "ACTIF",
+                "canal": "AGENCE",
+                "est_orphelin": False,
+            }
+        ],
+        "sinistre": [],
+        "paiement": [],
+    }
     dedup = SimpleNamespace(personnes=[], personne_de={}, paires=[])
     with pytest.raises(sqlite3.IntegrityError):
         build_warehouse(tmp_path / "w.sqlite", tables, dedup, QualityLog())

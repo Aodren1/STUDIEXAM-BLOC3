@@ -34,3 +34,8 @@ docs/.tmp/
 
 # secrets locaux
 .env
+
+# rapports bruts des outils (régénérés par la CI)
+ruff.json
+bandit.json
+junit.xml

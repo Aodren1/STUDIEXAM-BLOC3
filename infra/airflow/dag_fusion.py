@@ -28,10 +28,10 @@ with DAG(
     default_args=DEFAULTS,
     tags=["fusion", "big-data"],
 ) as dag:
-    extraction = BashOperator(task_id="extraction_talend_vers_kafka",
-                              bash_command="python -m fusion extract")
-    spark = BashOperator(task_id="jobs_spark", bash_command="bash infra/spark/submit-all.sh",
-                         execution_timeout=timedelta(hours=3))
+    extraction = BashOperator(task_id="extraction_talend_vers_kafka", bash_command="python -m fusion extract")
+    spark = BashOperator(
+        task_id="jobs_spark", bash_command="bash infra/spark/submit-all.sh", execution_timeout=timedelta(hours=3)
+    )
     # contrôle de réconciliation et publication du gold vers le tableau de bord (copie locale du gold HDFS)
     controle = BashOperator(task_id="reconciliation_et_publication", bash_command="python -m fusion run")
     extraction >> spark >> controle

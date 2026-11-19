@@ -25,13 +25,18 @@ from fusion.processing.dedup import run_dedup
 from fusion.processing.gold import build_gold
 from fusion.processing.silver import run_silver
 from fusion.quality import Anomalie, QualityLog
-from fusion.sources.generator import AB_DB, TRUTH_FILE, generate
+from fusion.sources.generator import AB_DB, DDL_SQLITE, TRUTH_FILE, generate
+from fusion.sqlsafe import ident
 from fusion.warehouse import build_warehouse
 
 log = logging.getLogger("fusion.pipeline")
 
-ENTITE_TABLES = {"client": ("AB_CLIENT", "AP_USERS"), "contrat": ("AB_CONTRAT", "AP_CONTRACTS"),
-                 "sinistre": ("AB_SINISTRE", "AP_CLAIMS"), "paiement": ("AB_PAIEMENT", "AP_PAYMENTS")}
+ENTITE_TABLES = {
+    "client": ("AB_CLIENT", "AP_USERS"),
+    "contrat": ("AB_CONTRAT", "AP_CONTRACTS"),
+    "sinistre": ("AB_SINISTRE", "AP_CLAIMS"),
+    "paiement": ("AB_PAIEMENT", "AP_PAYMENTS"),
+}
 
 
 class ReconciliationError(RuntimeError):
@@ -71,8 +76,15 @@ def reconcile(extracted_totals: dict[str, dict[str, Any]], tables: dict[str, lis
         silver = Counter(r["source"] for r in tables[entite])
         for table, src in ((t_ab, "AB"), (t_ap, "AP")):
             expected = extracted_totals.get(table, {}).get("lignes", 0)
-            out.append({"table_source": table, "entite": entite, "lignes_source": expected,
-                        "lignes_silver": silver.get(src, 0), "ecart": silver.get(src, 0) - expected})
+            out.append(
+                {
+                    "table_source": table,
+                    "entite": entite,
+                    "lignes_source": expected,
+                    "lignes_silver": silver.get(src, 0),
+                    "ecart": silver.get(src, 0) - expected,
+                }
+            )
     return out
 
 
@@ -88,7 +100,9 @@ def _source_totals(settings: Settings) -> dict[str, dict[str, Any]]:
         try:
             for tables in ENTITE_TABLES.values():
                 table = tables[0] if src == "AB" else tables[1]
-                out[table] = {"lignes": con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]}  # noqa: S608
+                # liste blanche (bandit B608)
+                sql = f"SELECT COUNT(*) FROM {ident(table, DDL_SQLITE)}"  # nosec B608  # noqa: S608
+                out[table] = {"lignes": con.execute(sql).fetchone()[0]}
         finally:
             con.close()
     return out
@@ -135,7 +149,11 @@ def run(settings: Settings | None = None, *, incremental: bool = True, strict: b
         raise ReconciliationError(f"réconciliation en échec : {ecarts}")
 
     truth_file = settings.sources_dir / TRUTH_FILE
-    truth = [tuple(p) for p in json.loads(truth_file.read_text(encoding="utf-8"))["paires"]] if truth_file.exists() else None
+    truth = (
+        [tuple(p) for p in json.loads(truth_file.read_text(encoding="utf-8"))["paires"]]
+        if truth_file.exists()
+        else None
+    )
     with _step(timings, "doublons (Spark)"):
         dedup = run_dedup(tables["client"], truth)
         lake.write_table("silver", "paire_doublon", dedup.paires)
@@ -157,7 +175,7 @@ def run(settings: Settings | None = None, *, incremental: bool = True, strict: b
         "etapes": timings,
     }
     with _step(timings, "gold (Spark)"):
-        gold = build_gold(tables, dedup, quality, settings.ref_date, reconciliation, report)
+        gold = build_gold(tables, dedup, quality, settings.ref_date, reconciliation=reconciliation, run=report)
         lake.write_json("gold", "dashboard.json", gold)
         lake.write_table("gold", "paires_doublons_detail", _pairs_detail(dedup, tables["client"]))
     report["duree_totale_s"] = round(time.perf_counter() - t_start, 2)
@@ -178,12 +196,20 @@ def _pairs_detail(dedup, clients: list[dict[str, Any]]) -> list[dict[str, Any]]:
     out = []
     for p in sorted(dedup.paires, key=lambda p: (p["niveau"] != "PROBABLE", -p["score"]))[:300]:
         a, b = by_uid[p["uid_a"]], by_uid[p["uid_b"]]
-        out.append({**{k: p[k] for k in ("uid_a", "uid_b", "type_paire", "score", "niveau")},
-                    "nom_a": f"{a['prenom'] or ''} {a['nom'] or ''}".strip(),
-                    "nom_b": f"{b['prenom'] or ''} {b['nom'] or ''}".strip(),
-                    "naissance_a": a["date_naissance"], "naissance_b": b["date_naissance"],
-                    "email_a": a["email"], "email_b": b["email"], "cp_a": a["code_postal"], "cp_b": b["code_postal"],
-                    "criteres": [k for k in ("email", "telephone", "nom", "naissance", "adresse") if p[f"c_{k}"] >= 0.7]})
+        out.append(
+            {
+                **{k: p[k] for k in ("uid_a", "uid_b", "type_paire", "score", "niveau")},
+                "nom_a": f"{a['prenom'] or ''} {a['nom'] or ''}".strip(),
+                "nom_b": f"{b['prenom'] or ''} {b['nom'] or ''}".strip(),
+                "naissance_a": a["date_naissance"],
+                "naissance_b": b["date_naissance"],
+                "email_a": a["email"],
+                "email_b": b["email"],
+                "cp_a": a["code_postal"],
+                "cp_b": b["code_postal"],
+                "criteres": [k for k in ("email", "telephone", "nom", "naissance", "adresse") if p[f"c_{k}"] >= 0.7],
+            }
+        )
     return out
 
 

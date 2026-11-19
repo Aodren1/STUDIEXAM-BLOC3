@@ -139,7 +139,15 @@ def login_required(role: str | None = None):
 
 
 # ---------------------------------------------------------------------------- routes
-def _register(app: Flask) -> None:  # noqa: C901 - table de routage
+def _register(app: Flask) -> None:
+    _register_security(app)
+    _register_auth(app)
+    _register_api(app)
+    _register_pipeline_api(app)
+    _register_errors(app)
+
+
+def _register_security(app: Flask) -> None:
     @app.after_request
     def security_headers(resp):
         resp.headers["Content-Security-Policy"] = (
@@ -158,6 +166,8 @@ def _register(app: Flask) -> None:  # noqa: C901 - table de routage
     def inject():
         return {"csrf_token": _csrf_token, "version": __version__}
 
+
+def _register_auth(app: Flask) -> None:
     @app.get("/connexion")
     def login():
         if "user" in session:
@@ -170,8 +180,9 @@ def _register(app: Flask) -> None:  # noqa: C901 - table de routage
         ext = _ext()
         key = request.remote_addr or "?"
         if ext["throttle"].blocked(key):
-            return render_template("login.html", erreur="Trop de tentatives. Réessayez dans quelques minutes.",
-                                   suivant="/"), 429
+            return render_template(
+                "login.html", erreur="Trop de tentatives. Réessayez dans quelques minutes.", suivant="/"
+            ), 429
         login_ = request.form.get("identifiant", "").strip().lower()
         account = ext["accounts"].get(login_)
         if not account or not check_password_hash(account["hash"], request.form.get("mot_de_passe", "")):
@@ -194,10 +205,17 @@ def _register(app: Flask) -> None:  # noqa: C901 - table de routage
     @login_required()
     def index():
         gold = _gold()
-        return render_template("dashboard.html", gold_ok=gold is not None,
-                               ref=gold["date_reference"] if gold else None,
-                               user=session["user"], role=session["role"], label=session["label"])
+        return render_template(
+            "dashboard.html",
+            gold_ok=gold is not None,
+            ref=gold["date_reference"] if gold else None,
+            user=session["user"],
+            role=session["role"],
+            label=session["label"],
+        )
 
+
+def _register_api(app: Flask) -> None:
     @app.get("/api/sante")
     def health():
         return jsonify({"statut": "ok", "version": __version__, "gold": _ext()["settings"].gold_path.exists()})
@@ -228,6 +246,8 @@ def _register(app: Flask) -> None:  # noqa: C901 - table de routage
             rows = [r for r in rows if r["niveau"] == niveau]
         return jsonify({"paires": rows[:200], "total": len(rows)})
 
+
+def _register_pipeline_api(app: Flask) -> None:
     @app.post("/api/pipeline")
     @login_required(role="admin")
     def run_pipeline():
@@ -242,9 +262,10 @@ def _register(app: Flask) -> None:  # noqa: C901 - table de routage
 
             try:
                 report = run(ext["settings"], incremental=True)
-                ext["pipeline_state"].update(etat="termine", message=f"exécution {report['run_id']} en "
-                                                                     f"{report['duree_totale_s']} s")
-            except Exception as exc:  # noqa: BLE001 - l'erreur est restituée à l'administrateur
+                ext["pipeline_state"].update(
+                    etat="termine", message=f"exécution {report['run_id']} en {report['duree_totale_s']} s"
+                )
+            except Exception as exc:
                 ext["pipeline_state"].update(etat="echec", message=str(exc)[:300])
             finally:
                 ext["pipeline_lock"].release()
@@ -257,6 +278,8 @@ def _register(app: Flask) -> None:  # noqa: C901 - table de routage
     def pipeline_status():
         return jsonify(_ext()["pipeline_state"])
 
+
+def _register_errors(app: Flask) -> None:
     @app.errorhandler(401)
     @app.errorhandler(403)
     @app.errorhandler(404)
