@@ -1,0 +1,29 @@
+# Profil DÉMONSTRATION (serveur de recette) : tableau de bord + pipeline avec bus et lac locaux.
+#   cp .env.example .env   (mots de passe des comptes)
+#   docker compose up -d --build        →  http://<serveur>:8096
+# Le profil Big Data complet (Kafka, HDFS, Spark) est décrit dans infra/docker-compose.bigdata.yml.
+services:
+  fusion:
+    build: .
+    image: abf-fusion-dashboard:1.0.0
+    container_name: abf-restitution-dashboard
+    restart: unless-stopped
+    ports:
+      - "8096:8000"
+    env_file:
+      - .env
+    environment:
+      FUSION_BUS: file
+      FUSION_LAKE: local
+      FUSION_REF_DATE: "2026-10-31"
+    volumes:
+      - fusion-data:/data
+    mem_limit: 768m
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  fusion-data:

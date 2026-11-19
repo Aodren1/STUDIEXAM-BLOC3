@@ -220,3 +220,20 @@ def test_gold_sur_jeu_vide():
     dedup = d.run_dedup([])
     g = build_gold(tables, dedup, QualityLog(), REF)
     assert g["clients"]["kpi"]["age_median"] is None and g["finances"]["kpi"]["ratio_sp_12_mois"] is None
+
+
+def test_extraction_seule_et_cli(small_sources, tmp_path, monkeypatch, capsys):
+    from fusion.__main__ import main
+    from fusion.config import Settings
+    from fusion.pipeline import extract_only
+
+    (tmp_path / "sources").mkdir()
+    for f in small_sources.iterdir():
+        (tmp_path / "sources" / f.name).write_bytes(f.read_bytes())
+    stats = extract_only(Settings(data_dir=tmp_path))
+    assert len(stats) == 8 and all(s["lignes"] > 0 for s in stats)
+    monkeypatch.setenv("FUSION_DATA_DIR", str(tmp_path))
+    assert main(["mapping", str(tmp_path / "m.csv")]) == 0
+    assert "attributs exportés" in capsys.readouterr().out
+    assert main(["seed"]) == 0  # sources déjà présentes : rien n'est régénéré
+    assert capsys.readouterr().out.strip() == "null"

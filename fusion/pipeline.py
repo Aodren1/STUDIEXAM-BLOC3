@@ -19,7 +19,7 @@ from typing import Any
 from fusion.bus import open_bus
 from fusion.config import Settings
 from fusion.extract import ExtractState, extract_all
-from fusion.lake import open_lake
+from fusion.lake import LocalLake, open_lake
 from fusion.mapping import MappingSpec
 from fusion.processing.dedup import run_dedup
 from fusion.processing.gold import build_gold
@@ -51,6 +51,17 @@ def seed(settings: Settings, force: bool = False) -> dict[str, int] | None:
     if not force and (settings.sources_dir / AB_DB).exists():
         return None
     return generate(settings.sources_dir, scale=settings.seed_scale, ref_date=settings.ref_date)
+
+
+def extract_only(settings: Settings) -> list[dict[str, Any]]:
+    """Étape d'extraction seule (tâche Airflow « extraction_talend_vers_kafka »)."""
+    seed(settings)
+    bus = open_bus(settings)
+    try:
+        state = ExtractState.load(settings.data_dir / "extract_state.json")
+        return [s.__dict__ for s in extract_all(settings.sources_dir, MappingSpec.load(), bus, state)]
+    finally:
+        bus.close()
 
 
 def reconcile(extracted_totals: dict[str, dict[str, Any]], tables: dict[str, list[dict]]) -> list[dict[str, Any]]:
@@ -152,6 +163,11 @@ def run(settings: Settings | None = None, *, incremental: bool = True, strict: b
     report["duree_totale_s"] = round(time.perf_counter() - t_start, 2)
     gold["qualite"]["execution"] = report
     lake.write_json("gold", "dashboard.json", gold)
+    if settings.lake != "local":
+        # le lac de référence est HDFS ; le tableau de bord lit une copie locale publiée (cache de restitution)
+        local = LocalLake(settings.lake_dir)
+        local.write_json("gold", "dashboard.json", gold)
+        local.write_table("gold", "paires_doublons_detail", _pairs_detail(dedup, tables["client"]))
     settings.run_report_path.write_text(json.dumps(report, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
     return report
 

@@ -31,3 +31,6 @@ docs/.tmp/
 .idea/
 .vscode/
 *.log
+
+# secrets locaux
+.env
