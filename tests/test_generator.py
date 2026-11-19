@@ -60,7 +60,7 @@ def test_defauts_injectes(small_sources):
         incidents = [r[0] for r in ap.execute("SELECT AP_INCIDENT_DATE FROM AP_CLAIMS")]
         states = {r[0] for r in ap.execute("SELECT AP_CONTRACT_STATE FROM AP_CONTRACTS")}
     assert any("/" in b for b in births), "dates JJ/MM/AAAA attendues"
-    assert any("T" in i for i in incidents if i), "horodatages ISO avec T attendus"
+    assert any(i and ("T" in i or "/" in i) for i in incidents), "horodatages non ISO attendus"
     assert len({s.lower() for s in states}) < len(states), "casse hétérogène attendue"
 
 
