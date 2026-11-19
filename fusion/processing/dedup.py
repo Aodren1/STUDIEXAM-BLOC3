@@ -4,7 +4,7 @@
    naissance, nom + code postal). En réel, 17 M de comptes donneraient 1,4 × 10¹⁴ paires : le blocage
    ramène le problème à quelques millions de comparaisons.
 2. Score pondéré : somme des concordances par critère (e-mail, téléphone, nom, naissance, adresse).
-3. Classement : score ≥ 0,70 « certain » (fusion automatique) ; 0,45 à 0,70 « probable » (file de
+3. Classement : score ≥ 0,66 « certain » (fusion automatique) ; 0,45 à 0,66 « probable » (file de
    validation métier, jamais fusionné automatiquement) ; en dessous, écarté.
 4. Fusion des paires certaines par union-find → identifiant de PERSONNE (golden record), attributs
    choisis par règles de survie (survivorship) documentées.
@@ -23,7 +23,10 @@ from fusion.cleaning import name_key
 # Les poids hérités du Bloc 2 sommaient à 1,05, ce qui décalait de fait les seuils (défaut D-02 du dossier).
 POIDS = {"email": 0.30, "telephone": 0.25, "nom": 0.20, "naissance": 0.15, "adresse": 0.10}
 CRITERES = list(POIDS)
-SEUIL_CERTAIN = 0.70
+# Seuil calibré sur la vérité terrain (reports/qualite/calibrage-seuil-doublons.txt) puis contraint par une règle
+# métier : un couple partageant e-mail, téléphone et adresse (0,30 + 0,25 + 0,10 = 0,65) n'est JAMAIS fusionné
+# automatiquement, alors qu'un compte ressaisi avec une coquille sur le nom (0,30 + 0,14 + 0,15 + 0,10 = 0,69) l'est.
+SEUIL_CERTAIN = 0.66
 SEUIL_PROBABLE = 0.45
 MAX_BLOC = 50  # un bloc plus grand (homonymes très fréquents) serait un produit cartésien : ignoré et compté
 

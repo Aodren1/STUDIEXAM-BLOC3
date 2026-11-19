@@ -1,0 +1,10 @@
+Calibrage du seuil « certain » sur la vérité terrain (8 500 comptes, 522 paires réelles)
+ seuil  détectées  précision   rappel
+  0.60        441     1.0000   0.8448
+  0.62        441     1.0000   0.8448
+  0.64        431     1.0000   0.8257
+  0.65        394     1.0000   0.7548
+  0.66        394     1.0000   0.7548
+  0.68        394     1.0000   0.7548
+  0.70        361     1.0000   0.6916
+  0.75        283     1.0000   0.5421

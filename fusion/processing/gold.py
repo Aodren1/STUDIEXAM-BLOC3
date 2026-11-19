@@ -340,7 +340,7 @@ def _doublons(dedup):
         matrice[p["niveau"]][a][b] += 1
         if a != b:
             matrice[p["niveau"]][b][a] += 1
-    from fusion.processing.dedup import CRITERES
+    from fusion.processing.dedup import CRITERES, SEUIL_CERTAIN, SEUIL_PROBABLE
 
     cooc = [[0] * len(CRITERES) for _ in CRITERES]
     for p in paires:
@@ -369,7 +369,7 @@ def _doublons(dedup):
         "histogramme_scores": {
             "categories": [f"{i / 20:.2f}" for i in range(9, 20)],
             "valeurs": [hist.get(i, 0) for i in range(9, 20)],
-            "seuils": {"probable": 0.45, "certain": 0.70},
+            "seuils": {"probable": SEUIL_PROBABLE, "certain": SEUIL_CERTAIN},
         },
         "taille_grappes": {
             "categories": ["2", "3", "4+"],

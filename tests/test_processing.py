@@ -302,3 +302,28 @@ def test_extraction_seule_et_cli(small_sources, tmp_path, monkeypatch, capsys):
     assert "attributs exportés" in capsys.readouterr().out
     assert main(["seed"]) == 0  # sources déjà présentes : rien n'est régénéré
     assert capsys.readouterr().out.strip() == "null"
+
+
+def test_couple_partageant_contact_et_adresse_jamais_fusionne():
+    """Règle métier du seuil : même e-mail, téléphone et adresse, mais nom et naissance différents → probable."""
+    a = _client(
+        "AB-1", nom="DURAND", prenom="Paul", date_naissance="1970-02-01", email="famille@x.fr", telephone="+33102030405"
+    )
+    b = _client(
+        "AP-1",
+        nom="DURAND",
+        prenom="Marie",
+        date_naissance="1972-05-09",
+        email="famille@x.fr",
+        telephone="+33102030405",
+    )
+    res = d.run_dedup([a, b])
+    assert [p["niveau"] for p in res.paires] == ["PROBABLE"]
+    assert res.personne_de["AB-1"] != res.personne_de["AP-1"]
+
+
+def test_coquille_sur_le_nom_fusionnee():
+    a = _client("AB-1", email="marie@x.fr")
+    b = _client("AP-1", nom="DUPNOT", email="marie@x.fr")
+    res = d.run_dedup([a, b])
+    assert res.paires[0]["niveau"] == "CERTAIN" and res.paires[0]["score"] == 0.69
