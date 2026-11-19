@@ -82,7 +82,7 @@ DOMAINES = ["gmail.com", "orange.fr", "free.fr", "hotmail.fr", "yahoo.fr", "outl
 
 # branche AB → (poids, prime annuelle médiane, sigma, fréquence de sinistre annuelle, coût médian)
 BRANCHES_AB = {
-    "SANTE": (34, 980.0, 0.35, 0.55, 260.0),
+    "SANTE": (34, 980.0, 0.35, 1.5, 300.0),
     "HABITATION": (28, 310.0, 0.40, 0.07, 1900.0),
     "AUTO": (26, 640.0, 0.45, 0.09, 2600.0),
     "PRO": (12, 2400.0, 0.70, 0.08, 7200.0),
@@ -92,7 +92,7 @@ PRODUITS_AP = {
     "AUTO_TOUS_RISQUES": (38, 68.0, 0.35, 0.11, 2900.0),
     "AUTO_TIERS": (24, 34.0, 0.30, 0.07, 2100.0),
     "AUTO_FLEX_KM": (12, 29.0, 0.30, 0.06, 2300.0),
-    "ASSIST_PREMIUM": (16, 14.0, 0.25, 0.20, 420.0),
+    "ASSIST_PREMIUM": (16, 14.0, 0.25, 0.20, 290.0),
     "MRH_ESSENTIEL": (10, 22.0, 0.30, 0.06, 1500.0),
 }
 DESCRIPTIONS = {
@@ -430,7 +430,8 @@ class Generator:
                         txt = when.strftime("%Y-%m-%dT%H:%M:%S")
                     else:
                         txt = self.rng.choice(["N/A", "", "2025-13-45 10:00:00"])
-                    fraud = round(min(99.99, max(0.0, self.rng.gauss(18, 14))), 2)
+                    suspect = self.chance(0.05)  # dossiers atypiques : score élevé
+                    fraud = round(min(99.99, max(0.0, self.rng.gauss(74 if suspect else 18, 9 if suspect else 12))), 2)
                     rows.append({
                         "AP_SINISTRE_NUM": 30000 + seq, "AP_CONTRACT_REF": ref, "AP_INCIDENT_DATE": txt,
                         "AP_ESTIMATED_AMOUNT": montant, "AP_CLAIM_STATUS": statut,
