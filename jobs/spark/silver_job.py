@@ -23,16 +23,24 @@ from pyspark.sql import types as T
 
 ENTITES = ("client", "contrat", "sinistre", "paiement")
 TOPICS = [f"src.{s}.{e}" for e in ENTITES for s in ("ab", "ap")]
-EVENT_SCHEMA = T.StructType([
-    T.StructField("topic", T.StringType()), T.StructField("partition", T.IntegerType()),
-    T.StructField("offset", T.LongType()), T.StructField("json", T.StringType()),
-])
-OUT_SCHEMA = T.StructType([
-    T.StructField("kind", T.StringType()),  # enregistrement | anomalie | quarantaine
-    T.StructField("entite", T.StringType()), T.StructField("uid", T.StringType()),
-    T.StructField("partition", T.IntegerType()), T.StructField("offset", T.LongType()),
-    T.StructField("payload", T.StringType()),
-])
+EVENT_SCHEMA = T.StructType(
+    [
+        T.StructField("topic", T.StringType()),
+        T.StructField("partition", T.IntegerType()),
+        T.StructField("offset", T.LongType()),
+        T.StructField("json", T.StringType()),
+    ]
+)
+OUT_SCHEMA = T.StructType(
+    [
+        T.StructField("kind", T.StringType()),  # enregistrement | anomalie | quarantaine
+        T.StructField("entite", T.StringType()),
+        T.StructField("uid", T.StringType()),
+        T.StructField("partition", T.IntegerType()),
+        T.StructField("offset", T.LongType()),
+        T.StructField("payload", T.StringType()),
+    ]
+)
 
 
 def spark_type(logical: str) -> T.DataType:
@@ -55,12 +63,15 @@ def entity_schema(spec_raw: dict, entite: str) -> T.StructType:
 
 # ------------------------------------------------------------------ lecture des événements
 def read_kafka(spark: SparkSession, bootstrap: str) -> DataFrame:
-    return (spark.read.format("kafka")
-            .option("kafka.bootstrap.servers", bootstrap)
-            .option("subscribe", ",".join(TOPICS))
-            .option("startingOffsets", "earliest").option("endingOffsets", "latest")
-            .load()
-            .select("topic", "partition", "offset", F.col("value").cast("string").alias("json")))
+    return (
+        spark.read.format("kafka")
+        .option("kafka.bootstrap.servers", bootstrap)
+        .option("subscribe", ",".join(TOPICS))
+        .option("startingOffsets", "earliest")
+        .option("endingOffsets", "latest")
+        .load()
+        .select("topic", "partition", "offset", F.col("value").cast("string").alias("json"))
+    )
 
 
 def read_file_bus(spark: SparkSession, bus_dir: Path) -> DataFrame:
@@ -98,8 +109,14 @@ def harmonise_partition(rows: Iterator[Row], spec_raw: dict) -> Iterator[tuple]:
             yield ("quarantaine", entite, None, r["partition"], r["offset"], (r["json"] or "")[:2000])
             continue
         rec = spec.map_record(entite, src.upper(), env["after"], log)
-        yield ("enregistrement", entite, rec[f"{entite}_uid"], r["partition"], r["offset"],
-               json.dumps(rec, ensure_ascii=False))
+        yield (
+            "enregistrement",
+            entite,
+            rec[f"{entite}_uid"],
+            r["partition"],
+            r["offset"],
+            json.dumps(rec, ensure_ascii=False),
+        )
     for a in log.anomalies:
         yield ("anomalie", a.entite, a.uid, None, None, json.dumps(a.__dict__, ensure_ascii=False))
 
@@ -110,26 +127,39 @@ def build_silver(spark: SparkSession, events: DataFrame, spec_raw: dict) -> dict
     tables: dict[str, DataFrame] = {}
     for entite in ENTITES:
         recs = out.filter((F.col("kind") == "enregistrement") & (F.col("entite") == entite))
-        tables[entite] = (recs.select(F.from_json("payload", entity_schema(spec_raw, entite)).alias("r"))
-                          .select("r.*"))
+        tables[entite] = recs.select(F.from_json("payload", entity_schema(spec_raw, entite)).alias("r")).select("r.*")
     tables = flag_orphans(tables)
-    tables["anomalie_qualite"] = (out.filter(F.col("kind") == "anomalie")
-                                  .select(F.from_json("payload", "code STRING, source STRING, entite STRING, "
-                                                                 "uid STRING, valeur STRING").alias("a")).select("a.*"))
-    tables["quarantaine"] = out.filter(F.col("kind") == "quarantaine").select("entite", "partition", "offset", "payload")
+    tables["anomalie_qualite"] = (
+        out.filter(F.col("kind") == "anomalie")
+        .select(
+            F.from_json("payload", "code STRING, source STRING, entite STRING, uid STRING, valeur STRING").alias("a")
+        )
+        .select("a.*")
+    )
+    tables["quarantaine"] = out.filter(F.col("kind") == "quarantaine").select(
+        "entite", "partition", "offset", "payload"
+    )
     return tables
 
 
 def flag_orphans(t: dict[str, DataFrame]) -> dict[str, DataFrame]:
     """Même règle que le moteur local : orphelins en cascade (un contrat orphelin isole ses enfants)."""
     clients = t["client"].select(F.col("client_uid").alias("_parent"))
-    contrat = (t["contrat"].join(clients, t["contrat"].client_uid == clients._parent, "left")
-               .withColumn("est_orphelin", F.col("_parent").isNull()).drop("_parent"))
+    contrat = (
+        t["contrat"]
+        .join(clients, t["contrat"].client_uid == clients._parent, "left")
+        .withColumn("est_orphelin", F.col("_parent").isNull())
+        .drop("_parent")
+    )
     valid = contrat.filter(~F.col("est_orphelin")).select(F.col("contrat_uid").alias("_parent"))
     out = {"client": t["client"], "contrat": contrat}
     for e in ("sinistre", "paiement"):
-        out[e] = (t[e].join(valid, t[e].contrat_uid == valid._parent, "left")
-                  .withColumn("est_orphelin", F.col("_parent").isNull()).drop("_parent"))
+        out[e] = (
+            t[e]
+            .join(valid, t[e].contrat_uid == valid._parent, "left")
+            .withColumn("est_orphelin", F.col("_parent").isNull())
+            .drop("_parent")
+        )
     return out
 
 

@@ -59,8 +59,16 @@ def valid_envelope(value: Any) -> bool:
     )
 
 
-def run_silver(bus: Bus, spec: MappingSpec, lake: Lake, run_id: str, *, incremental: bool = True,
-               commit: bool = True, group: str = GROUP) -> SilverResult:
+def run_silver(
+    bus: Bus,
+    spec: MappingSpec,
+    lake: Lake,
+    run_id: str,
+    *,
+    incremental: bool = True,
+    commit: bool = True,
+    group: str = GROUP,
+) -> SilverResult:
     log = QualityLog()
     store = SilverStore()
     if incremental:
@@ -79,8 +87,16 @@ def run_silver(bus: Bus, spec: MappingSpec, lake: Lake, run_id: str, *, incremen
                 if not valid_envelope(msg.value):
                     quarantaine += 1
                     log.flag("DQ16", src, entite, f"{topic}@{msg.partition}:{msg.offset}", msg.value)
-                    bus.produce(TOPIC_DLQ, msg.key, {"topic": topic, "partition": msg.partition,
-                                                    "offset": msg.offset, "brut": str(msg.value)[:2000]})
+                    bus.produce(
+                        TOPIC_DLQ,
+                        msg.key,
+                        {
+                            "topic": topic,
+                            "partition": msg.partition,
+                            "offset": msg.offset,
+                            "brut": str(msg.value)[:2000],
+                        },
+                    )
                     continue
                 raw_events.append(msg.value)
                 store.add(entite, spec.map_record(entite, src, msg.value["after"], log))
@@ -103,11 +119,11 @@ def run_silver(bus: Bus, spec: MappingSpec, lake: Lake, run_id: str, *, incremen
 def check_integrity(store: SilverStore, log: QualityLog) -> None:
     """Marque les orphelins (clé étrangère sans parent) et les paiements tardifs ; rien n'est supprimé."""
     clients = {c["client_uid"] for c in store.tables["client"]}
-    _flag_orphans(store, log, "contrat", "client_uid", clients, "DQ06")
+    _flag_orphans(store, log, "contrat", "client_uid", parents=clients, code="DQ06")
     # cascade : un contrat orphelin est isolé, ses sinistres et paiements n'ont donc plus de parent valide
     contrats = {c["contrat_uid"]: c for c in store.tables["contrat"] if not c["est_orphelin"]}
-    _flag_orphans(store, log, "sinistre", "contrat_uid", contrats, "DQ10")
-    _flag_orphans(store, log, "paiement", "contrat_uid", contrats, "DQ14")
+    _flag_orphans(store, log, "sinistre", "contrat_uid", parents=contrats, code="DQ10")
+    _flag_orphans(store, log, "paiement", "contrat_uid", parents=contrats, code="DQ14")
     for p in store.tables["paiement"]:
         c = contrats.get(p["contrat_uid"])
         late = False
@@ -115,11 +131,13 @@ def check_integrity(store: SilverStore, log: QualityLog) -> None:
             delta = (date.fromisoformat(p["date_paiement"][:10]) - date.fromisoformat(c["date_fin"])).days
             late = delta > TOLERANCE_FIN_CONTRAT_JOURS
             if late and not p.get("est_tardif"):
-                log.flag("DQ15", p["source"], "paiement", p["paiement_uid"], f"{p['date_paiement'][:10]} > {c['date_fin']}")
+                log.flag(
+                    "DQ15", p["source"], "paiement", p["paiement_uid"], f"{p['date_paiement'][:10]} > {c['date_fin']}"
+                )
         p["est_tardif"] = late
 
 
-def _flag_orphans(store: SilverStore, log: QualityLog, rel: str, fk: str, parents, code: str) -> None:
+def _flag_orphans(store: SilverStore, log: QualityLog, rel: str, fk: str, *, parents, code: str) -> None:
     for rec in store.tables[rel]:
         orphan = rec[fk] not in parents
         if orphan and not rec.get("est_orphelin"):

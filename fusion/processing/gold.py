@@ -67,8 +67,15 @@ def _tranche(value: float, bornes: list[float]) -> int:
     return len(bornes) - 2
 
 
-def build_gold(tables: dict[str, list[dict[str, Any]]], dedup, log: QualityLog, ref: date,
-               reconciliation: list[dict[str, Any]] | None = None, run: dict[str, Any] | None = None) -> dict:
+def build_gold(
+    tables: dict[str, list[dict[str, Any]]],
+    dedup,
+    log: QualityLog,
+    ref: date,
+    *,
+    reconciliation: list[dict[str, Any]] | None = None,
+    run: dict[str, Any] | None = None,
+) -> dict:
     clients = tables["client"]
     contrats = [c for c in tables["contrat"] if not c.get("est_orphelin")]
     contrats_by_uid = {c["contrat_uid"]: c for c in contrats}
@@ -132,13 +139,15 @@ def _clients(clients, contrats, dedup, ref):
             "taux_recouvrement_ap": _pct(communs, sum(1 for p in dedup.personnes if "AP" in p["sources"])),
             "personnes_actives": len(actifs_par_personne),
             "age_median": median(a for c in clients if (a := age_at(c.get("date_naissance"), ref)) is not None)
-            if clients else None,
+            if clients
+            else None,
             "sans_date_naissance": dict(sans_age),
         },
         "par_region": {**_series(region_order, regions), "libelles": region_order},
         "par_pays": _series([p for p in ("FR", "BE", "LU", "NL", "INCONNU") if p in pays], pays),
-        "par_statut": _series([s for s in ("ACTIF", "INACTIF", "RESILIE", "PROSPECT", "INCONNU") if s in statuts],
-                              statuts),
+        "par_statut": _series(
+            [s for s in ("ACTIF", "INACTIF", "RESILIE", "PROSPECT", "INCONNU") if s in statuts], statuts
+        ),
         "par_age": {**_series(age_labels, ages), "libelles": age_labels},
         "cohortes": {**_series(annees, cohortes), "libelles": annees},
         "portefeuille": {
@@ -179,17 +188,21 @@ def _contrats(contrats, ref):
             "primes_annualisees": round(sum(primes_actives), 2),
             "prime_moyenne": round(sum(primes_actives) / len(primes_actives), 2) if primes_actives else None,
             "anciennete_moyenne_ans": round(sum(durees) / len(durees), 1) if durees else None,
-            "taux_resiliation": _pct(statuts.get("RESILIE", {}).get("AB", 0) + statuts.get("RESILIE", {}).get("AP", 0),
-                                     len(contrats)),
+            "taux_resiliation": _pct(
+                statuts.get("RESILIE", {}).get("AB", 0) + statuts.get("RESILIE", {}).get("AP", 0), len(contrats)
+            ),
         },
         "par_branche": _series(branche_order, branches),
         "prime_moyenne_branche": _series(branche_order, prime_moy, digits=2),
-        "par_statut": _series([s for s in ("ACTIF", "SUSPENDU", "EN_ATTENTE", "RESILIE", "INCONNU") if s in statuts],
-                              statuts),
+        "par_statut": _series(
+            [s for s in ("ACTIF", "SUSPENDU", "EN_ATTENTE", "RESILIE", "INCONNU") if s in statuts], statuts
+        ),
         "par_canal": _series([c for c in ("AGENCE", "COURTIER", "DIGITAL") if c in canaux], canaux),
         "souscriptions_mensuelles": {**_series(mois, souscriptions), "libelles": mois},
-        "top_distributeurs": [{"code": code, "canal": libelle(canal), "source": src, "contrats_actifs": n}
-                              for (code, canal, src), n in distributeurs.most_common(10)],
+        "top_distributeurs": [
+            {"code": code, "canal": libelle(canal), "source": src, "contrats_actifs": n}
+            for (code, canal, src), n in distributeurs.most_common(10)
+        ],
     }
 
 
@@ -208,10 +221,14 @@ def _sinistres(sinistres, contrats, ref):
         if s.get("montant_estime") is not None:
             cout[s["_branche"]][s["source"]].append(s["montant_estime"])
     cout_moy = {b: {s: (sum(v) / len(v) if v else 0) for s, v in d.items()} for b, d in cout.items()}
-    tranches = _by_source([s for s in sinistres if s.get("montant_estime") is not None],
-                          lambda s: str(_tranche(s["montant_estime"], TRANCHES_MONTANT)))
-    tranche_labels = [f"{int(TRANCHES_MONTANT[i]):,} – {int(TRANCHES_MONTANT[i + 1]):,} €".replace(",", " ")
-                      for i in range(len(TRANCHES_MONTANT) - 2)] + [f"{int(TRANCHES_MONTANT[-2]):,} € et +".replace(",", " ")]
+    tranches = _by_source(
+        [s for s in sinistres if s.get("montant_estime") is not None],
+        lambda s: str(_tranche(s["montant_estime"], TRANCHES_MONTANT)),
+    )
+    tranche_labels = [
+        f"{int(TRANCHES_MONTANT[i]):,} – {int(TRANCHES_MONTANT[i + 1]):,} €".replace(",", " ")
+        for i in range(len(TRANCHES_MONTANT) - 2)
+    ] + [f"{int(TRANCHES_MONTANT[-2]):,} € et +".replace(",", " ")]
     scores = [s["score_fraude"] for s in sinistres if s.get("score_fraude") is not None]
     fraude = Counter(min(int(v // 10), 9) for v in scores)
     actifs = sum(c["statut"] == "ACTIF" for c in contrats)
@@ -231,15 +248,21 @@ def _sinistres(sinistres, contrats, ref):
             "suspicion_fraude": sum(v >= SEUIL_FRAUDE for v in scores),
         },
         "mensuels": {**_series(mois, par_mois), "libelles": mois},
-        "par_statut": _series([s for s in ("OUVERT", "EN_INSTRUCTION", "CLOS_INDEMNISE", "REFUSE", "INCONNU")
-                               if s in statuts], statuts),
+        "par_statut": _series(
+            [s for s in ("OUVERT", "EN_INSTRUCTION", "CLOS_INDEMNISE", "REFUSE", "INCONNU") if s in statuts], statuts
+        ),
         "par_branche": _series(branche_order, branches),
         "cout_moyen_branche": _series(branche_order, cout_moy, digits=2),
-        "tranches_montant": {**_series([str(i) for i in range(len(tranche_labels))], tranches),
-                             "libelles": tranche_labels},
-        "score_fraude": {"categories": [f"{10 * i}–{10 * i + 9}" for i in range(10)],
-                         "valeurs": [fraude.get(i, 0) for i in range(10)], "seuil": SEUIL_FRAUDE,
-                         "note": "Score fourni par AssurePlus uniquement ; AbAssurance n'a pas de modèle de fraude."},
+        "tranches_montant": {
+            **_series([str(i) for i in range(len(tranche_labels))], tranches),
+            "libelles": tranche_labels,
+        },
+        "score_fraude": {
+            "categories": [f"{10 * i}–{10 * i + 9}" for i in range(10)],
+            "valeurs": [fraude.get(i, 0) for i in range(10)],
+            "seuil": SEUIL_FRAUDE,
+            "note": "Score fourni par AssurePlus uniquement ; AbAssurance n'a pas de modèle de fraude.",
+        },
     }
 
 
@@ -267,11 +290,14 @@ def _finances(paiements, sinistres, contrats, ref):
 
     charge_12m: Counter[str] = Counter()
     for s in sinistres:
-        if s.get("date_survenance") and s["date_survenance"][:10] > debut_12m and s.get("montant_estime"):
-            if s["statut"] != "REFUSE":
-                charge_12m[s["_branche"]] += s["montant_estime"]
-    sp = {b: round(100 * charge_12m[b] / encaisse_branche_12m[b], 1) if encaisse_branche_12m[b] else None
-          for b in BRANCHES if b in encaisse_branche_12m}
+        recent = s.get("date_survenance") and s["date_survenance"][:10] > debut_12m
+        if recent and s.get("montant_estime") and s["statut"] != "REFUSE":
+            charge_12m[s["_branche"]] += s["montant_estime"]
+    sp = {
+        b: round(100 * charge_12m[b] / encaisse_branche_12m[b], 1) if encaisse_branche_12m[b] else None
+        for b in BRANCHES
+        if b in encaisse_branche_12m
+    }
     primes_branche: dict[str, dict[str, float]] = defaultdict(lambda: dict.fromkeys(SOURCES, 0.0))
     for c in contrats:
         if c["statut"] == "ACTIF" and c.get("prime_annuelle"):
@@ -288,12 +314,20 @@ def _finances(paiements, sinistres, contrats, ref):
             "primes_annualisees": round(sum(sum(v.values()) for v in primes_branche.values()), 2),
         },
         "encaissements_mensuels": {**_series(mois, encaisse, digits=2), "libelles": mois},
-        "par_mode": _series([m for m in ("PRELEVEMENT", "CARTE", "CHEQUE", "VIREMENT", "PORTEFEUILLE", "AUTRE")
-                             if m in modes], modes),
-        "ratio_sp_branche": {"categories": list(sp), "libelles": [libelle(b) for b in sp], "valeurs": list(sp.values())},
+        "par_mode": _series(
+            [m for m in ("PRELEVEMENT", "CARTE", "CHEQUE", "VIREMENT", "PORTEFEUILLE", "AUTRE") if m in modes], modes
+        ),
+        "ratio_sp_branche": {
+            "categories": list(sp),
+            "libelles": [libelle(b) for b in sp],
+            "valeurs": list(sp.values()),
+        },
         "primes_branche": _series([b for b in BRANCHES if b in primes_branche], primes_branche, digits=2),
-        "statuts_paiement_ap": {"categories": list(statuts_ap), "libelles": [libelle(s) for s in statuts_ap],
-                                "valeurs": list(statuts_ap.values())},
+        "statuts_paiement_ap": {
+            "categories": list(statuts_ap),
+            "libelles": [libelle(s) for s in statuts_ap],
+            "valeurs": list(statuts_ap.values()),
+        },
     }
 
 
@@ -332,11 +366,15 @@ def _doublons(dedup):
         },
         "matrice_sources": matrice,
         "matrice_criteres": {"criteres": ["E-mail", "Téléphone", "Nom", "Naissance", "Adresse"], "valeurs": cooc},
-        "histogramme_scores": {"categories": [f"{i / 20:.2f}" for i in range(9, 20)],
-                               "valeurs": [hist.get(i, 0) for i in range(9, 20)],
-                               "seuils": {"probable": 0.45, "certain": 0.70}},
-        "taille_grappes": {"categories": ["2", "3", "4+"], "valeurs": [tailles.get(2, 0), tailles.get(3, 0),
-                                                                        tailles.get(4, 0)]},
+        "histogramme_scores": {
+            "categories": [f"{i / 20:.2f}" for i in range(9, 20)],
+            "valeurs": [hist.get(i, 0) for i in range(9, 20)],
+            "seuils": {"probable": 0.45, "certain": 0.70},
+        },
+        "taille_grappes": {
+            "categories": ["2", "3", "4+"],
+            "valeurs": [tailles.get(2, 0), tailles.get(3, 0), tailles.get(4, 0)],
+        },
     }
 
 
@@ -346,8 +384,16 @@ def _qualite(log, tables, reconciliation, run):
     regles = []
     for code, r in REGLES.items():
         n = {s: by.get((code, s), 0) for s in SOURCES}
-        regles.append({"code": code, "libelle": r.libelle, "gravite": r.gravite, "action": r.action, **n,
-                       "total": n["AB"] + n["AP"]})
+        regles.append(
+            {
+                "code": code,
+                "libelle": r.libelle,
+                "gravite": r.gravite,
+                "action": r.action,
+                **n,
+                "total": n["AB"] + n["AP"],
+            }
+        )
     gravite = Counter()
     for r in regles:
         gravite[r["gravite"]] += r["total"]
@@ -355,7 +401,9 @@ def _qualite(log, tables, reconciliation, run):
         "regles": regles,
         "par_gravite": {"categories": GRAVITES, "valeurs": [gravite.get(g, 0) for g in GRAVITES]},
         "volumes_silver": {e: len(rows) for e, rows in tables.items()},
-        "orphelins": {e: sum(1 for r in tables[e] if r.get("est_orphelin")) for e in ("contrat", "sinistre", "paiement")},
+        "orphelins": {
+            e: sum(1 for r in tables[e] if r.get("est_orphelin")) for e in ("contrat", "sinistre", "paiement")
+        },
         "reconciliation": reconciliation,
         "execution": run,
     }

@@ -52,8 +52,7 @@ class KafkaBus:  # pragma: no cover - exercé par tests/test_kafka_integration.p
         return c
 
     def consume(self, topic: str, group: str, max_messages: int | None = None) -> Iterator[Message]:
-        delivered = 0
-        for rec in self._consumer(topic, group):
+        for delivered, rec in enumerate(self._consumer(topic, group), start=1):
             raw = rec.value.decode("utf-8", errors="replace")
             try:
                 value: Any = json.loads(raw)
@@ -61,7 +60,6 @@ class KafkaBus:  # pragma: no cover - exercé par tests/test_kafka_integration.p
                 value = raw
             key = rec.key.decode("utf-8") if rec.key else None
             yield Message(rec.topic, rec.partition, rec.offset, key, value)
-            delivered += 1
             if max_messages is not None and delivered >= max_messages:
                 return
 

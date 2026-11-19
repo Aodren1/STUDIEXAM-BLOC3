@@ -126,14 +126,20 @@ class MappingSpec:
         out = []
         for e in self.entites.values():
             for ch in e.champs:
-                out.append({
-                    "entite": e.nom, "attribut_cible": ch.cible, "type_cible": ch.type,
-                    "table_ab": e.tables["AB"], "colonne_ab": ch.colonnes["AB"] or "—",
-                    "transformation_ab": " → ".join(ch.transformations["AB"]) or "—",
-                    "table_ap": e.tables["AP"], "colonne_ap": ch.colonnes["AP"] or "—",
-                    "transformation_ap": " → ".join(ch.transformations["AP"]) or "—",
-                    "regle": ch.regle,
-                })
+                out.append(
+                    {
+                        "entite": e.nom,
+                        "attribut_cible": ch.cible,
+                        "type_cible": ch.type,
+                        "table_ab": e.tables["AB"],
+                        "colonne_ab": ch.colonnes["AB"] or "—",
+                        "transformation_ab": " → ".join(ch.transformations["AB"]) or "—",
+                        "table_ap": e.tables["AP"],
+                        "colonne_ap": ch.colonnes["AP"] or "—",
+                        "transformation_ap": " → ".join(ch.transformations["AP"]) or "—",
+                        "regle": ch.regle,
+                    }
+                )
         return out
 
     def export_csv(self, path: Path | str) -> int:

@@ -1,0 +1,7 @@
+fusion\extract.py:92 B608 MEDIUM/LOW Possible SQL injection vector through string-based query construction.
+fusion\lake.py:118 B310 MEDIUM/HIGH Audit url open for permitted schemes. Allowing use of file:/ or custom schemes is often unexpected.
+fusion\pipeline.py:91 B608 MEDIUM/MEDIUM Possible SQL injection vector through string-based query construction.
+fusion\sources\generator.py:124 B311 LOW/HIGH Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+fusion\sources\generator.py:572 B608 MEDIUM/MEDIUM Possible SQL injection vector through string-based query construction.
+fusion\warehouse.py:148 B608 MEDIUM/MEDIUM Possible SQL injection vector through string-based query construction.
+fusion\warehouse.py:223 B608 MEDIUM/MEDIUM Possible SQL injection vector through string-based query construction.

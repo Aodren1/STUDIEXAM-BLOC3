@@ -22,7 +22,8 @@ from typing import Any
 
 from fusion.bus import Bus, topic_for
 from fusion.mapping import MappingSpec
-from fusion.sources.generator import AB_DB, AP_DB
+from fusion.sources.generator import AB_DB, AP_DB, DDL_SQLITE
+from fusion.sqlsafe import ident
 
 SOURCE_DB = {"AB": AB_DB, "AP": AP_DB}
 SYSTEME = {"AB": "ORACLE_ABASSURANCE", "AP": "SQLSERVER_ASSUREPLUS"}
@@ -30,9 +31,14 @@ SYSTEME = {"AB": "ORACLE_ABASSURANCE", "AP": "SQLSERVER_ASSUREPLUS"}
 #: Colonne de suivi de l'extraction incrémentale, par table source.
 #: Les clés AB et AP sont monotones, sauf AP_PAYMENTS dont la clé est un GUID : on suit alors l'horodatage.
 WATERMARKS = {
-    "AB_CLIENT": "AB_CLIENT_ID", "AB_CONTRAT": "AB_POLICY_NUMBER", "AB_SINISTRE": "AB_CLAIM_ID",
-    "AB_PAIEMENT": "AB_PAYMENT_ID", "AP_USERS": "AP_USER_ID", "AP_CONTRACTS": "AP_CONTRACT_REF",
-    "AP_CLAIMS": "AP_SINISTRE_NUM", "AP_PAYMENTS": "AP_PAYMENT_DATETIME",
+    "AB_CLIENT": "AB_CLIENT_ID",
+    "AB_CONTRAT": "AB_POLICY_NUMBER",
+    "AB_SINISTRE": "AB_CLAIM_ID",
+    "AB_PAIEMENT": "AB_PAYMENT_ID",
+    "AP_USERS": "AP_USER_ID",
+    "AP_CONTRACTS": "AP_CONTRACT_REF",
+    "AP_CLAIMS": "AP_SINISTRE_NUM",
+    "AP_PAYMENTS": "AP_PAYMENT_DATETIME",
 }
 #: Colonnes non uniques : la borne est inclusive (>=) pour ne perdre aucune ligne arrivée dans la même seconde
 #: que la dernière lue. Les lignes de la borne sont donc republiées : le consommateur doit être idempotent.
@@ -64,8 +70,14 @@ class ExtractState:
         self.path.write_text(json.dumps(self.marks, indent=1), encoding="utf-8")
 
 
-MONTANTS = {"AB_CONTRAT": "AB_PRIME_ANNUELLE", "AB_SINISTRE": "AB_MONTANT_ESTIME", "AB_PAIEMENT": "AB_MONTANT",
-            "AP_CONTRACTS": "AP_MONTHLY_PREMIUM", "AP_CLAIMS": "AP_ESTIMATED_AMOUNT", "AP_PAYMENTS": "AP_AMOUNT_PAID"}
+MONTANTS = {
+    "AB_CONTRAT": "AB_PRIME_ANNUELLE",
+    "AB_SINISTRE": "AB_MONTANT_ESTIME",
+    "AB_PAIEMENT": "AB_MONTANT",
+    "AP_CONTRACTS": "AP_MONTHLY_PREMIUM",
+    "AP_CLAIMS": "AP_ESTIMATED_AMOUNT",
+    "AP_PAYMENTS": "AP_AMOUNT_PAID",
+}
 
 
 def envelope(src: str, table: str, key: str, row: dict[str, Any]) -> dict[str, Any]:
@@ -79,8 +91,16 @@ def envelope(src: str, table: str, key: str, row: dict[str, Any]) -> dict[str, A
     }
 
 
-def extract_table(con: sqlite3.Connection, src: str, entite: str, spec: MappingSpec, bus: Bus,
-                  state: ExtractState | None = None, batch_size: int = 5000) -> ExtractStats:
+def extract_table(
+    con: sqlite3.Connection,
+    src: str,
+    entite: str,
+    spec: MappingSpec,
+    bus: Bus,
+    *,
+    state: ExtractState | None = None,
+    batch_size: int = 5000,
+) -> ExtractStats:
     e = spec.entites[entite]
     table = e.tables[src]
     key_col = next(ch.colonnes[src] for ch in e.champs if ch.cible == e.cle)
@@ -89,7 +109,10 @@ def extract_table(con: sqlite3.Connection, src: str, entite: str, spec: MappingS
     stats = ExtractStats(table, topic)
     t0 = time.perf_counter()
 
-    sql = f"SELECT * FROM {table}"  # noqa: S608 - noms issus du mapping validé, jamais d'une saisie
+    columns = [c.split()[0] for c in DDL_SQLITE[table].split(", ")]
+    table, key_col, mark_col = ident(table, DDL_SQLITE), ident(key_col, columns), ident(mark_col, columns)
+    # identifiants en liste blanche (ident) (bandit B608)
+    sql = f"SELECT * FROM {table}"  # nosec B608  # noqa: S608
     params: tuple[Any, ...] = ()
     previous = state.marks.get(table) if state else None
     if previous is not None:
@@ -120,14 +143,16 @@ def extract_table(con: sqlite3.Connection, src: str, entite: str, spec: MappingS
     return stats
 
 
-def extract_all(sources_dir: Path, spec: MappingSpec, bus: Bus, state: ExtractState | None = None) -> list[ExtractStats]:
+def extract_all(
+    sources_dir: Path, spec: MappingSpec, bus: Bus, state: ExtractState | None = None
+) -> list[ExtractStats]:
     """Extrait les 8 tables (ordre : référentiels parents avant enfants) et publie sur les 8 topics src.*."""
     out = []
     for src in ("AB", "AP"):
         con = sqlite3.connect(f"file:{sources_dir / SOURCE_DB[src]}?mode=ro", uri=True)
         try:
             for entite in ("client", "contrat", "sinistre", "paiement"):
-                out.append(extract_table(con, src, entite, spec, bus, state))
+                out.append(extract_table(con, src, entite, spec, bus, state=state))
         finally:
             con.close()
     if state is not None:

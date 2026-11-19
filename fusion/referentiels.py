@@ -14,21 +14,45 @@ SOURCES = {
 DIAL_CODES = {"FR": "33", "BE": "32", "NL": "31", "LU": "352"}
 
 STATUT_CLIENT = {
-    "ACTIF": "ACTIF", "INACTIF": "INACTIF", "RESILIE": "RESILIE", "PROSPECT": "PROSPECT",
-    "active": "ACTIF", "inactive": "INACTIF", "churned": "RESILIE", "lead": "PROSPECT",
+    "ACTIF": "ACTIF",
+    "INACTIF": "INACTIF",
+    "RESILIE": "RESILIE",
+    "PROSPECT": "PROSPECT",
+    "active": "ACTIF",
+    "inactive": "INACTIF",
+    "churned": "RESILIE",
+    "lead": "PROSPECT",
 }
 STATUT_CONTRAT = {
-    "ACTIF": "ACTIF", "RESILIE": "RESILIE", "SUSPENDU": "SUSPENDU", "EN_ATTENTE": "EN_ATTENTE",
-    "active": "ACTIF", "cancelled": "RESILIE", "suspended": "SUSPENDU", "pending": "EN_ATTENTE",
+    "ACTIF": "ACTIF",
+    "RESILIE": "RESILIE",
+    "SUSPENDU": "SUSPENDU",
+    "EN_ATTENTE": "EN_ATTENTE",
+    "active": "ACTIF",
+    "cancelled": "RESILIE",
+    "suspended": "SUSPENDU",
+    "pending": "EN_ATTENTE",
 }
 STATUT_SINISTRE = {
-    "OUVERT": "OUVERT", "EN_COURS": "EN_INSTRUCTION", "CLOS": "CLOS_INDEMNISE", "REFUSE": "REFUSE",
-    "OPEN": "OUVERT", "UNDER_REVIEW": "EN_INSTRUCTION", "SETTLED": "CLOS_INDEMNISE", "REJECTED": "REFUSE",
+    "OUVERT": "OUVERT",
+    "EN_COURS": "EN_INSTRUCTION",
+    "CLOS": "CLOS_INDEMNISE",
+    "REFUSE": "REFUSE",
+    "OPEN": "OUVERT",
+    "UNDER_REVIEW": "EN_INSTRUCTION",
+    "SETTLED": "CLOS_INDEMNISE",
+    "REJECTED": "REFUSE",
 }
 STATUT_PAIEMENT = {"SUCCEEDED": "REUSSI", "FAILED": "ECHOUE", "REFUNDED": "REMBOURSE", "PENDING": "EN_ATTENTE"}
 MODE_PAIEMENT = {
-    "PRELEVEMENT": "PRELEVEMENT", "CB": "CARTE", "CHEQUE": "CHEQUE", "VIREMENT": "VIREMENT",
-    "SEPA_DD": "PRELEVEMENT", "CARD": "CARTE", "APPLE_PAY": "PORTEFEUILLE", "PAYPAL": "PORTEFEUILLE",
+    "PRELEVEMENT": "PRELEVEMENT",
+    "CB": "CARTE",
+    "CHEQUE": "CHEQUE",
+    "VIREMENT": "VIREMENT",
+    "SEPA_DD": "PRELEVEMENT",
+    "CARD": "CARTE",
+    "APPLE_PAY": "PORTEFEUILLE",
+    "PAYPAL": "PORTEFEUILLE",
 }
 
 #: Produits : code source → (branche du modèle unifié, libellé)
@@ -46,14 +70,37 @@ PRODUITS = {
 BRANCHES = ["AUTO", "HABITATION", "SANTE", "PRO", "ASSISTANCE"]
 
 LIBELLES = {
-    "AUTO": "Automobile", "HABITATION": "Habitation", "SANTE": "Santé", "PRO": "Professionnelle",
-    "ASSISTANCE": "Assistance", "ACTIF": "Actif", "INACTIF": "Inactif", "RESILIE": "Résilié",
-    "PROSPECT": "Prospect", "SUSPENDU": "Suspendu", "EN_ATTENTE": "En attente", "OUVERT": "Ouvert",
-    "EN_INSTRUCTION": "En instruction", "CLOS_INDEMNISE": "Clos indemnisé", "REFUSE": "Refusé",
-    "REUSSI": "Réussi", "ECHOUE": "Échoué", "REMBOURSE": "Remboursé", "PRELEVEMENT": "Prélèvement",
-    "CARTE": "Carte", "CHEQUE": "Chèque", "VIREMENT": "Virement", "PORTEFEUILLE": "Portefeuille mobile",
-    "AGENCE": "Agence", "COURTIER": "Courtier", "DIGITAL": "Application mobile", "INCONNU": "Inconnu",
-    "FR": "France", "BE": "Belgique", "LU": "Luxembourg", "NL": "Pays-Bas",
+    "AUTO": "Automobile",
+    "HABITATION": "Habitation",
+    "SANTE": "Santé",
+    "PRO": "Professionnelle",
+    "ASSISTANCE": "Assistance",
+    "ACTIF": "Actif",
+    "INACTIF": "Inactif",
+    "RESILIE": "Résilié",
+    "PROSPECT": "Prospect",
+    "SUSPENDU": "Suspendu",
+    "EN_ATTENTE": "En attente",
+    "OUVERT": "Ouvert",
+    "EN_INSTRUCTION": "En instruction",
+    "CLOS_INDEMNISE": "Clos indemnisé",
+    "REFUSE": "Refusé",
+    "REUSSI": "Réussi",
+    "ECHOUE": "Échoué",
+    "REMBOURSE": "Remboursé",
+    "PRELEVEMENT": "Prélèvement",
+    "CARTE": "Carte",
+    "CHEQUE": "Chèque",
+    "VIREMENT": "Virement",
+    "PORTEFEUILLE": "Portefeuille mobile",
+    "AGENCE": "Agence",
+    "COURTIER": "Courtier",
+    "DIGITAL": "Application mobile",
+    "INCONNU": "Inconnu",
+    "FR": "France",
+    "BE": "Belgique",
+    "LU": "Luxembourg",
+    "NL": "Pays-Bas",
 }
 
 _REGIONS = {

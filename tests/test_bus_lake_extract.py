@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+from contextlib import closing
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from types import SimpleNamespace
+from typing import ClassVar
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -93,7 +95,7 @@ def test_lac_local_ignore_un_repertoire_incomplet(tmp_path):
 
 # ---------------------------------------------------------------------------- lac WebHDFS (faux NameNode)
 class _FakeHdfs(BaseHTTPRequestHandler):
-    files: dict[str, bytes] = {}
+    files: ClassVar[dict[str, bytes]] = {}
 
     def log_message(self, *args):
         pass
@@ -134,7 +136,7 @@ class _FakeHdfs(BaseHTTPRequestHandler):
         children = {}
         for k in self.files:
             if k.startswith(path + "/"):
-                rest = k[len(path) + 1:].split("/")
+                rest = k[len(path) + 1 :].split("/")
                 children[rest[0]] = "DIRECTORY" if len(rest) > 1 else "FILE"
         statuses = [{"pathSuffix": n, "type": t} for n, t in children.items()]
         return self._reply(200, json.dumps({"FileStatuses": {"FileStatus": statuses}}).encode())
@@ -179,7 +181,7 @@ def test_extraction_complete_puis_incrementale(small_sources, tmp_path):
     bus = FileBus(tmp_path / "bus")
     state = ExtractState.load(tmp_path / "state.json")
     stats = {s.table: s for s in extract_all(small_sources, spec, bus, state)}
-    with sqlite3.connect(small_sources / AP_DB) as con:
+    with closing(sqlite3.connect(small_sources / AP_DB)) as con:
         n_users = con.execute("SELECT COUNT(*) FROM AP_USERS").fetchone()[0]
         total_paid = con.execute("SELECT ROUND(SUM(AP_AMOUNT_PAID), 2) FROM AP_PAYMENTS").fetchone()[0]
     assert stats["AP_USERS"].lignes == n_users

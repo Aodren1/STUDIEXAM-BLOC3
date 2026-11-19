@@ -31,8 +31,13 @@ REF = date(2026, 10, 31)
 def spark():
     from pyspark.sql import SparkSession
 
-    s = (SparkSession.builder.master("local[2]").appName("tests-fusion")
-         .config("spark.sql.shuffle.partitions", "4").config("spark.ui.enabled", "false").getOrCreate())
+    s = (
+        SparkSession.builder.master("local[2]")
+        .appName("tests-fusion")
+        .config("spark.sql.shuffle.partitions", "4")
+        .config("spark.ui.enabled", "false")
+        .getOrCreate()
+    )
     yield s
     s.stop()
 

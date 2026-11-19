@@ -1,10 +1,10 @@
 """Ligne de commande.
 
-    python -m fusion seed [--force]        génère les deux bases sources simulées
-    python -m fusion extract               publie les nouvelles lignes des sources sur le bus (rôle Talend)
-    python -m fusion run [--complet]       exécute le pipeline (incrémental par défaut)
-    python -m fusion mapping [fichier]     exporte le mapping en CSV (tMap Talend, documentation)
-    python -m fusion serve [--port 8000]   démarre le tableau de bord (waitress)
+python -m fusion seed [--force]        génère les deux bases sources simulées
+python -m fusion extract               publie les nouvelles lignes des sources sur le bus (rôle Talend)
+python -m fusion run [--complet]       exécute le pipeline (incrémental par défaut)
+python -m fusion mapping [fichier]     exporte le mapping en CSV (tMap Talend, documentation)
+python -m fusion serve [--port 8000]   démarre le tableau de bord (waitress)
 """
 
 from __future__ import annotations
@@ -46,8 +46,11 @@ def main(argv: list[str] | None = None) -> int:
         from fusion.pipeline import run
 
         report = run(settings, incremental=not args.complet)
-        print(json.dumps({k: report[k] for k in ("run_id", "mode", "duree_totale_s", "etapes")}, indent=1,
-                         ensure_ascii=False))
+        print(
+            json.dumps(
+                {k: report[k] for k in ("run_id", "mode", "duree_totale_s", "etapes")}, indent=1, ensure_ascii=False
+            )
+        )
     elif args.cmd == "mapping":
         from fusion.mapping import MappingSpec
 

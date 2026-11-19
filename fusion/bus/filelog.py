@@ -40,7 +40,7 @@ class FileBus:
         h = self._handles.get((topic, p))
         if h is None:
             self._file(topic, p).parent.mkdir(parents=True, exist_ok=True)
-            h = self._handles[(topic, p)] = open(self._file(topic, p), "a", encoding="utf-8")  # noqa: SIM115
+            h = self._handles[(topic, p)] = open(self._file(topic, p), "a", encoding="utf-8")  # noqa: SIM115 - descripteur gardé ouvert, fermé par close()
         h.write(json.dumps({"k": key, "v": value}, ensure_ascii=False, separators=(",", ":")) + "\n")
 
     def produce_raw(self, topic: str, key: str | None, raw_line: str) -> None:

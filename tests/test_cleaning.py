@@ -144,7 +144,8 @@ def test_age_revolu():
     assert c.age_at(None, ref) is None
 
 
-@pytest.mark.parametrize(("raw", "expected"), [("12,50", 12.5), ("1 200.00", 1200.0), (7, 7.0), ("abc", None),
-                                               ("", None), (None, None)])
+@pytest.mark.parametrize(
+    ("raw", "expected"), [("12,50", 12.5), ("1 200.00", 1200.0), (7, 7.0), ("abc", None), ("", None), (None, None)]
+)
 def test_to_float(raw, expected):
     assert c.to_float(raw) == expected

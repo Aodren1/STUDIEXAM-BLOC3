@@ -1,0 +1,160 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop, "feature/**", "fix/**", "hotfix/**", "release/**", "ci/**", "docs/**"]
+    tags: ["v*"]
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  convention:
+    name: Convention de nommage des branches
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python scripts/check_branch_name.py
+
+  qualite:
+    name: Qualité du code (ruff, bandit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -e ".[dev]"
+      - name: Ruff — lint (style, complexité, sécurité, bugs probables)
+        run: ruff check . --output-format=github
+      - name: Ruff — formatage
+        run: ruff format --check .
+      - name: Bandit — analyse de sécurité
+        run: bandit -c pyproject.toml -r fusion -f json -o bandit.json || (cat bandit.json; exit 1)
+      - name: Rapports pour SonarCloud
+        if: always()
+        run: ruff check . --output-format=json --exit-zero > ruff.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: rapports-qualite, path: "ruff.json\nbandit.json" }
+
+  tests:
+    name: Tests unitaires et couverture (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ matrix.python }}", cache: pip }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: pip install -e ".[dev]"
+      - name: Tests Python (seuil de couverture 85 %)
+        run: >
+          pytest --cov --cov-report=term --cov-report=xml --cov-report=html
+          --cov-fail-under=85 --junitxml=junit.xml
+      - name: Tests JavaScript (formatage du tableau de bord)
+        run: node --test tests/js/format.test.mjs
+      - uses: actions/upload-artifact@v4
+        if: matrix.python == '3.12'
+        with: { name: couverture, path: "coverage.xml\njunit.xml\nhtmlcov" }
+
+  spark:
+    name: Jobs Spark (équivalence avec le moteur local)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -e ".[dev,spark]"
+      - run: pytest tests/spark -m spark -v
+
+  kafka:
+    name: Intégration Apache Kafka
+    runs-on: ubuntu-latest
+    services:
+      kafka:
+        image: apache/kafka:3.9.0
+        ports: ["9092:9092"]
+        env:
+          KAFKA_NODE_ID: 1
+          KAFKA_PROCESS_ROLES: broker,controller
+          KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+          KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+          KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+          KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+          KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+          KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+          KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+          KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+          KAFKA_NUM_PARTITIONS: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -e ".[dev,kafka]"
+      - name: Attente du broker
+        run: |
+          for i in $(seq 1 30); do
+            python -c "import socket; socket.create_connection(('localhost', 9092), 2)" && exit 0
+            sleep 2
+          done
+          exit 1
+      - run: pytest tests/test_kafka_integration.py -m kafka -v
+        env: { KAFKA_BOOTSTRAP: "localhost:9092" }
+
+  sonarcloud:
+    name: SonarCloud
+    needs: [qualite, tests]
+    runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }  # historique complet : attribution des nouvelles lignes
+      - uses: actions/download-artifact@v4
+        with: { name: couverture }
+      - uses: actions/download-artifact@v4
+        with: { name: rapports-qualite }
+      - name: Analyse SonarCloud
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@v5
+      - name: Jeton absent
+        if: env.SONAR_TOKEN == ''
+        run: echo "::notice::SONAR_TOKEN non défini dans les secrets du dépôt, analyse SonarCloud ignorée"
+
+  image:
+    name: Recette de l'image Docker
+    needs: [tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t abf-fusion-dashboard:ci .
+      - name: Démarrage et contrôles de fumée
+        run: |
+          docker run -d --name fusion -p 8000:8000 \
+            -e FUSION_ADMIN_PASSWORD=ci-admin -e FUSION_USER_PASSWORD=ci-user abf-fusion-dashboard:ci
+          for i in $(seq 1 60); do
+            curl -fsS http://localhost:8000/api/sante | grep -q '"gold":true' && break
+            sleep 3
+          done
+          curl -fsS http://localhost:8000/api/sante
+          curl -fsS http://localhost:8000/connexion | grep -q "Connexion"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/api/gold/clients)" = "401"
+          docker exec fusion python -c "import json; d=json.load(open('/data/lake/gold/dashboard.json')); \
+            assert all(r['ecart']==0 for r in d['qualite']['reconciliation'])"
+      - if: failure()
+        run: docker logs fusion
