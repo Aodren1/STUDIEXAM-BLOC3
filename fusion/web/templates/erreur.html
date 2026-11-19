@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Erreur {{ code }}{% endblock %}
+{% block body %}
+<main class="login">
+  <div class="login-text">
+    <p class="kicker">Erreur {{ code }}</p>
+    <h1>{% if code == 403 %}Accès refusé{% elif code == 404 %}Page introuvable{% else %}Service indisponible{% endif %}</h1>
+    <p class="lede">{{ message }}</p>
+    <p><a href="/">Retour au tableau de bord</a></p>
+  </div>
+</main>
+{% endblock %}

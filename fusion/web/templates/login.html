@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Connexion — Fusion AbAssurance × AssurePlus{% endblock %}
+{% block body_class %}page-login{% endblock %}
+{% block body %}
+<main class="login">
+  <div class="login-text">
+    <p class="kicker">AbAssurance × AssurePlus</p>
+    <h1>Validation de la fusion des données</h1>
+    <p class="lede">Statistiques comparées des deux bases historiques (Oracle et SQL Server), calculées par la chaîne
+      Talend → Kafka → Spark → HDFS : répartition des clients, contrats, sinistres, finances et matrice de doublons.</p>
+    <p class="fine">Accès réservé. Deux profils : <em>administrateur</em> (qualité, doublons nominatifs, relance du
+      pipeline) et <em>utilisateur</em> (statistiques agrégées, sans donnée personnelle).</p>
+  </div>
+  <form class="login-form" method="post" action="{{ url_for('login_post') }}" autocomplete="on">
+    <h2>Connexion</h2>
+    {% if erreur %}<p class="form-error" role="alert">{{ erreur }}</p>{% endif %}
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="suivant" value="{{ suivant }}">
+    <label for="identifiant">Identifiant</label>
+    <input id="identifiant" name="identifiant" type="text" required autocomplete="username" autofocus>
+    <label for="mot_de_passe">Mot de passe</label>
+    <input id="mot_de_passe" name="mot_de_passe" type="password" required autocomplete="current-password">
+    <button type="submit">Se connecter</button>
+    <p class="fine">Version {{ version }}</p>
+  </form>
+</main>
+{% endblock %}

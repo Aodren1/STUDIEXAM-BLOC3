@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord — Fusion AbAssurance × AssurePlus{% endblock %}
+{% block body %}
+<a class="skip" href="#contenu">Aller au contenu</a>
+<header class="masthead">
+  <div class="masthead-title">
+    <p class="kicker">AbAssurance × AssurePlus · validation de la fusion</p>
+    <h1>Tableau de bord des deux bases</h1>
+  </div>
+  <div class="masthead-meta">
+    <p>Données au <strong id="ref-date">{{ ref or "—" }}</strong></p>
+    <p>{{ label }} · <span class="role role-{{ role }}">{{ "administrateur" if role == "admin" else "utilisateur" }}</span></p>
+    <div class="masthead-actions">
+      <button type="button" class="link-btn" id="theme-toggle" aria-label="Changer de thème">Thème sombre</button>
+      <form method="post" action="{{ url_for('logout') }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <button type="submit" class="link-btn">Déconnexion</button>
+      </form>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Rubriques">
+  <button type="button" data-section="synthese" aria-current="page">Synthèse</button>
+  <button type="button" data-section="clients">Répartition des clients</button>
+  <button type="button" data-section="contrats">Contrats</button>
+  <button type="button" data-section="sinistres">Sinistres</button>
+  <button type="button" data-section="finances">Finances</button>
+  <button type="button" data-section="doublons">Matrice de doublons</button>
+  {% if role == "admin" %}<button type="button" data-section="qualite">Qualité et exécution</button>{% endif %}
+</nav>
+
+<div class="filters">
+  <span class="filters-label" id="filtre-label">Source affichée</span>
+  <div class="segmented" role="radiogroup" aria-labelledby="filtre-label">
+    <button type="button" role="radio" aria-checked="true" data-source="ALL">Les deux</button>
+    <button type="button" role="radio" aria-checked="false" data-source="AB"><i class="key key-ab"></i>AbAssurance <small>Oracle</small></button>
+    <button type="button" role="radio" aria-checked="false" data-source="AP"><i class="key key-ap"></i>AssurePlus <small>SQL Server</small></button>
+  </div>
+</div>
+
+<main id="contenu" tabindex="-1" data-role="{{ role }}" data-csrf="{{ csrf_token() }}">
+  {% if not gold_ok %}
+  <p class="empty">La zone gold est vide : le pipeline n'a pas encore été exécuté (<code>python -m fusion run</code>).</p>
+  {% else %}
+  <p class="loading">Chargement…</p>
+  {% endif %}
+</main>
+
+<footer class="colophon">
+  <p>Chaîne : bases Oracle (AB_*) et SQL Server (AP_*) → extraction Talend → topics Kafka <code>src.*</code> →
+    jobs Spark (silver, doublons, gold) → lac HDFS → ce tableau de bord. Lecture seule de la zone gold.</p>
+  <p>fusion-data {{ version }}</p>
+</footer>
+<div class="tooltip" id="tooltip" role="status" hidden></div>
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/format.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}?v={{ version }}"></script>
+{% endblock %}
