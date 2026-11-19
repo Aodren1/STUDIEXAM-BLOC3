@@ -1,0 +1,122 @@
+<section style="break-before: page">
+  <div class="question">
+    <p><b>Question 3.</b> Identifiez un bug potentiel dans le pipeline.</p>
+    <p class="crit"><b>C3.3</b> — <b>Critères :</b> pratiques pour identifier la source des bogues, pour les corriger, pour tester et valider les correctifs.</p>
+  </div>
+
+  <p>Le bug présenté ici n’a pas été imaginé pour l’exercice : il a été rencontré pendant le développement, lors de la première exécution incrémentale. Il est caractéristique des pipelines Kafka, où la livraison est garantie <i>au moins une fois</i> et non <i>exactement une fois</i>. Il est suivi comme l’anomalie <b>FUS-9</b>.</p>
+
+  <h2>1. Le symptôme</h2>
+  <p>Première nuit : exécution complète, réconciliation exacte. Deuxième nuit : <b>aucune donnée nouvelle dans les sources</b>, et pourtant le pipeline s’arrête sur le contrôle de réconciliation :</p>
+  <pre class="code">$ python -m fusion run --complet        # nuit 1 : 15,4 s, réconciliation exacte
+$ python -m fusion run                  # nuit 2 : aucune ligne nouvelle dans les sources
+fusion.pipeline.ReconciliationError: réconciliation en échec :
+  AB_CLIENT    lignes_source  6 000   lignes_silver  12 000   écart  +6 000
+  AP_USERS     lignes_source  2 500   lignes_silver   5 000   écart  +2 500
+  AB_CONTRAT   lignes_source  9 779   lignes_silver  19 558   écart  +9 779
+  …            (les huit tables doublées)
+  AP_PAYMENTS  lignes_source 50 736   lignes_silver 101 472   écart +50 736</pre>
+  <p>Le garde-fou a joué son rôle : rien de faux n’a été publié. Mais le pipeline ne pouvait plus tourner deux nuits de suite, et la question restait entière : que se serait-il passé sans ce contrôle ?</p>
+
+  <h2>2. Identifier la source</h2>
+  <ol class="steps">
+    <li><b>Reproduire de façon déterministe.</b> Les données de test étant générées avec une graine fixe, le scénario « exécution complète, puis incrémentale » reproduit l’erreur à l’identique sur le poste, à chaque fois. Un bug reproductible est à moitié résolu.</li>
+    <li><b>Lire la forme de l’écart.</b> Toutes les tables sont exactement doublées (+100 %). Ce n’est donc ni une règle de nettoyage, ni une jointure : <i>toutes</i> les lignes ont été chargées deux fois. Deux hypothèses restent : le bus a relivré des messages, ou l’extraction les a republiés.</li>
+    <li><b>Suivre une ligne de bout en bout</b> grâce au lignage. Le rapport d’exécution montre que l’extraction de la nuit 2 a publié 149 102 paiements : elle a tout republié. Le fichier des filigranes <code>extract_state.json</code> <b>n’existe pas</b> après la nuit 1. <i>Première cause</i> : en mode complet, <code>run()</code> passait <code>state=None</code> à l’extraction, qui ne mémorisait donc aucun filigrane.</li>
+    <li><b>Se demander pourquoi une republication double les données.</b> Une republication n’est pas une anomalie en soi : c’est un comportement normal d’un système « au moins une fois ». <i>Deuxième cause, la vraie</i> : le chargement silver faisait <code>append</code>. Il n’était pas idempotent.</li>
+    <li><b>Chercher les autres déclencheurs de la même cause</b>, au lieu de corriger seulement le cas observé :
+      <ul>
+        <li>la <b>borne inclusive</b> du filigrane d’<code>AP_PAYMENTS</code> (<code>&gt;=</code> sur un horodatage, car la clé GUID n’est pas ordonnée) republie à chaque nuit les paiements de la dernière seconde lue ;</li>
+        <li>une <b>relivraison Kafka</b> : si le job s’arrête après l’écriture du silver mais avant la validation des offsets, tous les messages du lot sont relivrés ;</li>
+        <li>la <b>mise à jour</b> d’une ligne source (capturée par Debezium) ajouterait une seconde version au lieu de remplacer la première.</li>
+      </ul></li>
+  </ol>
+
+  <h2>3. Mesurer l’impact sans garde-fou</h2>
+  <p>Sur le chemin du moteur local, la clé primaire de l’entrepôt aurait arrêté le traitement : la nuit échoue, mais rien de faux n’est publié. Le chemin Spark, lui, calcule le gold directement depuis le silver Parquet, sans passer par l’entrepôt. J’ai mesuré ce qu’il aurait affiché (<code>reports/bug/2-impact-sans-garde-fou.txt</code>) :</p>
+  <table class="compact">
+    <thead><tr><th>Indicateur publié</th><th class="num">Nuit 1</th><th class="num">Nuit 2, sans aucune donnée nouvelle</th></tr></thead>
+    <tbody>
+      <tr><td>Encaissé sur 12 mois</td><td class="num">8&#160;579&#160;860 €</td><td class="num">17&#160;159&#160;721 €</td></tr>
+      <tr><td>Primes annualisées</td><td class="num">8&#160;203&#160;116 €</td><td class="num">16&#160;406&#160;233 €</td></tr>
+      <tr><td>Contrats actifs</td><td class="num">9&#160;402</td><td class="num">18&#160;804</td></tr>
+      <tr><td>Paiements silver après une relivraison Kafka</td><td class="num">149&#160;102</td><td class="num">298&#160;204</td></tr>
+    </tbody>
+  </table>
+  <p>C’est le pire type de bug pour un projet de fusion : aucun plantage, des chiffres plausibles, et des statistiques financières doublées présentées à la direction.</p>
+</section>
+
+<section style="break-before: page">
+  <h2>4. Corriger</h2>
+  <p>Méthode : d’abord un test qui échoue, ensuite le correctif (règle du <code>CONTRIBUTING.md</code>). Sur la branche <code>fix/FUS-9-paiements-comptes-deux-fois</code>, le premier commit ajoute <b>cinq tests de reproduction</b>, un par déclencheur. Ils sont rouges :</p>
+  <pre class="code">FAILED tests/test_idempotence.py::test_rejeu_incremental_sans_nouvelle_donnee    ReconciliationError
+FAILED tests/test_idempotence.py::test_mode_complet_enregistre_les_filigranes    FileNotFoundError
+FAILED tests/test_idempotence.py::test_relivraison_apres_arret_avant_commit      15 048 lignes au lieu de 7 524
+FAILED tests/test_idempotence.py::test_borne_inclusive_du_filigrane_ap_payments  assert 7525 == 7524
+FAILED tests/test_idempotence.py::test_la_derniere_version_d_une_ligne_l_emporte assert 2 == 1
+5 failed in 6.23s</pre>
+  <p>Le second commit corrige la cause, pas seulement le symptôme :</p>
+  <div class="grid2">
+    <div>
+      <h4>Avant (ajout)</h4>
+      <pre class="code">@dataclass
+class SilverStore:
+    tables: dict[str, list[dict]]
+
+    def add(self, entite, record):
+        self.tables[entite].append(record)</pre>
+    </div>
+    <div>
+      <h4>Après (upsert idempotent)</h4>
+      <pre class="code">@dataclass
+class SilverStore:
+    rows: dict[str, dict[str, dict]]  # par identifiant
+
+    def add(self, entite, record):
+        uid = record[f"{entite}_uid"]
+        previous = self.rows[entite].get(uid)
+        if previous is not None:
+            self.remplacements += 1
+            for m in MARQUEURS:  # garde les contrôles posés
+                if m in previous and m not in record:
+                    record[m] = previous[m]
+        self.rows[entite][uid] = record  # dernière version</pre>
+    </div>
+  </div>
+  <ul>
+    <li><b>Silver idempotent</b> : indexé par identifiant, chaque réception remplace la version précédente. L’ordre est fiable, car une clé va toujours dans la même partition Kafka. Le même principe est appliqué dans le job Spark (fenêtre <code>row_number()</code> sur l’identifiant, offset décroissant).</li>
+    <li><b>Filigranes</b> : le mode complet part d’un état vide mais l’<b>enregistre</b>.</li>
+    <li><b>Journal qualité</b> : une anomalie est identifiée par (règle, source, entité, ligne). Une ligne republiée n’est plus signalée deux fois, sinon l’onglet qualité aurait lui aussi doublé.</li>
+  </ul>
+
+  <h2>5. Tester et valider le correctif</h2>
+  <ol class="steps">
+    <li><b>Les tests de reproduction passent</b> (5 sur 5), ainsi que toute la suite : aucune régression.</li>
+    <li><b>Le scénario réel est rejoué</b> (<code>reports/bug/4-validation-correctif.txt</code>) : la nuit 2 s’exécute en 5 secondes. L’extraction ne republie qu’une ligne (la borne inclusive), absorbée par l’upsert. La réconciliation est exacte et les indicateurs sont identiques à ceux de la nuit 1.</li>
+    <li><b>La CI vérifie l’équivalence côté Spark</b> : un test publie deux fois les mêmes événements et contrôle que le job Spark produit les mêmes volumes que le moteur local.</li>
+    <li><b>Les tests restent dans la suite</b> comme tests de non-régression. Ils documentent le comportement attendu mieux qu’un commentaire.</li>
+  </ol>
+  <pre class="code">$ python -m fusion run --complet   →  15,7 s
+$ python -m fusion run             →   5,0 s   republiées : {'AP_PAYMENTS': 1}   absorbées par l'upsert : 1
+                                               réconciliation : OK   encaissé 12 mois : 8 579 860,23 €   contrats actifs : 9 402</pre>
+  <p>L’historique Git garde la trace du raisonnement : <code>b94e284 test(silver): reproduit le double comptage…</code> puis <code>932f811 fix(silver): chargement idempotent…</code>, fusionnés ensemble dans <code>develop</code>.</p>
+
+  <h2>6. Prévenir</h2>
+  <p>Ce bug enseigne une règle générale, désormais écrite dans le code : <b>dans un pipeline alimenté par Kafka, tout consommateur doit être idempotent</b>. La livraison exactement une fois n’est pas une propriété qu’on obtient gratuitement. Trois barrières se complètent : le traitement idempotent (qui corrige la cause), la réconciliation bloquante (qui détecte, et a détecté), et les contraintes de l’entrepôt (qui empêchent les données incohérentes d’entrer).</p>
+
+  <h2>7. Autres défauts trouvés et risques identifiés</h2>
+  <p>Le développement a fait apparaître d’autres défauts, tous corrigés et couverts par un test. D’autres risques restent ouverts : je les signale plutôt que de les taire.</p>
+  <table class="compact">
+    <thead><tr><th>Réf.</th><th>Défaut ou risque</th><th>Comment il a été trouvé</th><th>État</th></tr></thead>
+    <tbody>
+      <tr><td class="nowrap">D-01</td><td>Sinistres et paiements rattachés à un contrat lui-même orphelin : violation de clé étrangère</td><td>Échec du chargement de l’entrepôt (contrainte appliquée)</td><td>Corrigé : orphelins en cascade</td></tr>
+      <tr><td class="nowrap">D-02</td><td>Poids du score de doublon hérités du Bloc 2 dont la somme valait 1,05 : seuils décalés de fait</td><td>Test unitaire « score parfait = 1 »</td><td>Corrigé : poids normalisés</td></tr>
+      <tr><td class="nowrap">D-03</td><td>Après D-02, rappel des fusions tombé à 69 % (coquilles sur le nom bloquées à 0,69)</td><td>Lecture de la file de validation dans le tableau de bord</td><td>Corrigé : seuil calibré à 0,66 sur la vérité terrain (rappel 75,5 %, précision 100 %)</td></tr>
+      <tr><td class="nowrap">D-04</td><td>Séparateur de milliers invisible sur les axes (espace fine de <code>Intl</code> dans un canvas), alors que l’énoncé exige « 1 000 »</td><td>Revue visuelle des captures</td><td>Corrigé et testé (tests JS)</td></tr>
+      <tr><td class="nowrap">D-05</td><td>Couleurs de la carte des régions bloquées par la CSP (attribut <code>style</code> en ligne)</td><td>Console du navigateur</td><td>Corrigé : style via le CSSOM, la CSP reste stricte</td></tr>
+      <tr><td class="nowrap">R-01</td><td><code>AP_INCIDENT_DATE</code> n’a pas de fuseau horaire : un sinistre déclaré la nuit du changement d’heure peut changer de jour</td><td>Analyse du schéma</td><td>Ouvert : à trancher avec AssurePlus (heure légale ou UTC)</td></tr>
+      <tr><td class="nowrap">R-02</td><td>Blocs de plus de 50 comptes ignorés par le dédoublonnage (e-mail générique partagé) : doublons manqués</td><td>Compteur « blocs ignorés » du rapport</td><td>Surveillé : 0 aujourd’hui, à suivre en production</td></tr>
+      <tr><td class="nowrap">R-03</td><td>Un contrat peut arriver avant son client sur deux topics différents : orphelin transitoire</td><td>Analyse de l’ordre Kafka (ordre garanti par clé, pas entre topics)</td><td>Couvert : l’orphelinat est recalculé à chaque exécution</td></tr>
+    </tbody>
+  </table>
+</section>

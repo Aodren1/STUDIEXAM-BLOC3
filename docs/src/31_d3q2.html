@@ -1,0 +1,22 @@
+<section style="break-before: page">
+  <div class="question">
+    <p><b>Question 2.</b> Faites des tests unitaires et montrez votre test coverage.</p>
+    <p class="crit"><b>C3.3</b> — <b>Critère :</b> pratiques de test et de validation des correctifs.</p>
+  </div>
+
+  <h2>1. Stratégie</h2>
+  <p>Les tests suivent la pyramide habituelle : beaucoup de tests unitaires rapides sur les règles, moins de tests d’intégration sur l’enchaînement, quelques tests de bout en bout sur le pipeline et l’application. Trois principes :</p>
+  <ul>
+    <li><b>Chaque règle de nettoyage est testée sur ses cas limites réels</b>, ceux rencontrés au profilage : <code>31/02/1985</code>, <code>1900-01-01</code>, <code>+33 (0)6…</code>, un mobile belge, un nom en capitales placé avant le prénom. Les tests sont paramétrés (<code>pytest.mark.parametrize</code>) : un cas par ligne, lisible comme une table de spécification.</li>
+    <li><b>Les tests portent sur le comportement, pas sur l’implémentation.</b> Par exemple : « un message non validé est relivré », « une ligne republiée ne double pas le silver », « un utilisateur reçoit 403 sur la route qualité ».</li>
+    <li><b>Les données de test sont générées, déterministes et petites</b> : le générateur produit un jeu au 1/20<sup>e</sup> en une fraction de seconde, une seule fois par session de tests. La suite complète s’exécute en une quinzaine de secondes.</li>
+  </ul>
+  <!--GEN:tests-->
+  <p class="small">Les tests Spark et Kafka sont marqués (<code>-m spark</code>, <code>-m kafka</code>). Ils s’exécutent dans la CI, qui fournit une JVM et un broker ; sur un poste qui n’en dispose pas, ils sont ignorés proprement au lieu d’échouer.</p>
+
+  <h2>2. Couverture</h2>
+  <p>Mesurée par <code>pytest-cov</code> (lignes <b>et</b> branches), avec un seuil bloquant de 85 % dans la CI. Le rapport ci-dessous est généré depuis <code>coverage.xml</code> :</p>
+  <!--GEN:couverture-->
+  <figure><div class="shot"><img src="captures/couverture.png" alt="Rapport de couverture HTML" style="height:92mm;object-fit:cover;object-position:top"></div><figcaption>Figure 3 — Rapport HTML de couverture (artefact « couverture » de la CI).</figcaption></figure>
+  <p>Lecture critique : <!--GEN:cov_lignes--> des lignes ne signifie pas « sans bug ». Les lignes non couvertes sont des chemins d’erreur d’infrastructure (redirection WebHDFS sans en-tête <code>Location</code>, bus Kafka choisi par configuration) et l’adaptateur Kafka lui-même. Ce dernier est exclu de la mesure unitaire parce qu’il est testé contre un vrai broker dans le job <code>kafka</code>. La couverture des <b>branches</b> compte davantage que celle des lignes pour des règles de nettoyage pleines de conditions : elle atteint <!--GEN:cov_branches-->, les branches manquantes étant des cas de repli (valeur absente, liste vide). Enfin, le bug du dossier suivant est passé à travers une couverture déjà supérieure à 97 %, ce qui confirme qu’un taux de couverture ne remplace pas des tests de scénario.</p>
+</section>

@@ -1,0 +1,85 @@
+<section style="break-before: page">
+  <div class="question">
+    <p><b>Question 2.</b> Concevez et formalisez la base de données finale mappée des deux bases de données sous forme de schéma MCD. Le modèle final doit s’appuyer sur les deux schémas en annexe.</p>
+    <p class="crit"><b>C3.1</b> — <b>Critères :</b> respect des spécifications fonctionnelles et architecturales ; lisibilité et maintenabilité.</p>
+  </div>
+
+  <h2>1. Démarche : des deux schémas sources aux concepts métier</h2>
+  <p>Les deux bases décrivent les mêmes quatre réalités (client, contrat, sinistre, paiement) avec des choix différents. J’ai d’abord aligné les tables deux à deux (<code>AB_CLIENT</code> / <code>AP_USERS</code>, etc.), puis chaque colonne, en notant pour chaque écart la décision de modélisation. Les écarts les plus structurants :</p>
+  <table class="compact">
+    <thead><tr><th>Écart entre les sources</th><th>AbAssurance (Oracle)</th><th>AssurePlus (SQL Server)</th><th>Décision dans le modèle final</th></tr></thead>
+    <tbody>
+      <tr><td>Identité du client</td><td>nom et prénom séparés</td><td><code>AP_FULL_NAME</code> unique</td><td>nom et prénom séparés ; découpage par la casse (DQ04)</td></tr>
+      <tr><td>Date de naissance</td><td><code>DATE</code></td><td><code>VARCHAR(10)</code> non contrôlé</td><td><code>DATE</code> ; formats convertis, sentinelles à NULL (DQ01, DQ02)</td></tr>
+      <tr><td>Unité de la prime</td><td>prime <b>annuelle</b></td><td>prime <b>mensuelle</b></td><td>prime annuelle : ×12 côté AP, sinon les statistiques financières seraient fausses d’un facteur 12</td></tr>
+      <tr><td>Produit</td><td>branche seule (<code>SANTE</code>…)</td><td>code produit (<code>AUTO_TIERS</code>…)</td><td>entité PRODUIT portant la branche commune</td></tr>
+      <tr><td>Distribution</td><td>agence (<code>AB_AGENCE_ID</code>)</td><td>courtier ou application mobile</td><td>entité DISTRIBUTEUR et type de canal</td></tr>
+      <tr><td>Date de sinistre</td><td><code>TIMESTAMP</code></td><td><code>VARCHAR(19)</code>, trois formats</td><td><code>TIMESTAMP</code> ; formats convertis (DQ08, DQ09)</td></tr>
+      <tr><td>Données propres à une source</td><td>numéro fiscal</td><td>score de fidélité, score de fraude, statut de transaction</td><td>attributs optionnels, jamais extrapolés à l’autre source</td></tr>
+      <tr><td>Identifiants</td><td><code>NUMBER</code> à partir de 100 001</td><td><code>INT</code>, GUID pour les paiements</td><td>identifiant préfixé par la source (<code>AB-…</code>, <code>AP-…</code>) : aucune collision</td></tr>
+      <tr><td>Clés étrangères</td><td colspan="2">non déclarées dans les deux bases (orphelins constatés)</td><td>déclarées et appliquées ; orphelins mis en quarantaine (DQ06, DQ10, DQ14)</td></tr>
+    </tbody>
+  </table>
+  <p>La décision la plus importante n’apparaît dans aucun des deux schémas. Un même assuré peut exister dans les deux bases, et même deux fois dans une seule (ressaisie en agence, double inscription mobile). Le modèle distingue donc le <b>compte client tel qu’il existe dans une source</b> (CLIENT_SOURCE, que l’on conserve pour les raisons réglementaires et contractuelles de l’énoncé) de la <b>personne réelle</b> (PERSONNE, le « golden record » produit par le dédoublonnage). Les statistiques de « répartition des clients » se lisent donc à deux niveaux : <!--GEN:comptes--> comptes, mais <!--GEN:personnes--> personnes.</p>
+</section>
+
+<section class="rot-page">
+  <h2 style="margin-top:0">2. Le MCD de la base finale</h2>
+  <figure style="margin-top:2mm">
+    <!--GEN:mcd-->
+    <figcaption>Figure 1 — Modèle conceptuel de données (Merise) de la base unifiée. Onze entités, onze associations dont une réflexive (RAPPROCHER) portant le score de doublon.</figcaption>
+  </figure>
+</section>
+
+<section style="break-before: page">
+  <h2>3. Dictionnaire et cardinalités</h2>
+  <table class="compact">
+    <thead><tr><th>Entité</th><th>Identifiant</th><th>Signification et origine</th></tr></thead>
+    <tbody>
+      <tr><td>SYSTÈME_SOURCE</td><td>code_source</td><td>Base d’origine (AB : Oracle, AP : SQL Server). Trace la provenance de chaque donnée (lignage).</td></tr>
+      <tr><td>PERSONNE</td><td>id_personne</td><td>Assuré réel après dédoublonnage. Attributs choisis par règles de survie (voir RG4).</td></tr>
+      <tr><td>CLIENT_SOURCE</td><td>client_uid</td><td>Compte client d’une base : <code>AB_CLIENT</code> ou <code>AP_USERS</code>, une ligne par ligne source.</td></tr>
+      <tr><td>TERRITOIRE</td><td>code_postal</td><td>Pays, département, région déduits du code postal (aucune base ne stocke le pays).</td></tr>
+      <tr><td>PRODUIT</td><td>code_produit</td><td>Branche AB ou code produit AP, rattaché à une branche commune (AUTO, HABITATION, SANTE, PRO, ASSISTANCE).</td></tr>
+      <tr><td>DISTRIBUTEUR</td><td>code_distributeur</td><td>Agence AB (<code>AG-007</code>), courtier AP (<code>BRK-012</code>) ou <code>APP-MOBILE</code>.</td></tr>
+      <tr><td>CONTRAT</td><td>contrat_uid</td><td><code>AB_CONTRAT</code> / <code>AP_CONTRACTS</code> ; prime annualisée.</td></tr>
+      <tr><td>SINISTRE</td><td>sinistre_uid</td><td><code>AB_SINISTRE</code> / <code>AP_CLAIMS</code> ; score de fraude AP seulement.</td></tr>
+      <tr><td>PAIEMENT</td><td>paiement_uid</td><td><code>AB_PAIEMENT</code> / <code>AP_PAYMENTS</code> ; statut réputé « réussi » côté AB.</td></tr>
+      <tr><td>RÈGLE_QUALITÉ</td><td>code_règle</td><td>Catalogue des contrôles DQ01 à DQ17 (Annexe B).</td></tr>
+      <tr><td>ANOMALIE</td><td>id_anomalie</td><td>Déclenchement d’une règle sur une ligne : la preuve de chaque correction.</td></tr>
+    </tbody>
+  </table>
+  <h3>Règles de gestion qui fixent les cardinalités</h3>
+  <ul>
+    <li><b>RG1.</b> Un compte client provient d’un et un seul système source (1,1) ; un système fournit plusieurs comptes (0,n). Même règle pour contrat, sinistre, paiement et anomalie.</li>
+    <li><b>RG2.</b> Un compte client correspond à une et une seule personne (1,1) ; une personne regroupe au moins un compte (1,n). Une personne sans compte n’a pas de sens : elle n’existe que par ses comptes.</li>
+    <li><b>RG3.</b> Deux comptes peuvent être rapprochés (RAPPROCHER, 0,n de chaque côté) avec un score, un niveau (certain, probable) et une décision (automatique, à valider). Seules les paires certaines rattachent les deux comptes à la même PERSONNE.</li>
+    <li><b>RG4.</b> Survie des attributs de PERSONNE : identité issue d’AbAssurance (acquéreur, référentiel maître), coordonnées les plus récentes, date de naissance la plus fréquente.</li>
+    <li><b>RG5.</b> Un contrat est souscrit par un et un seul compte client (1,1) et porte sur un et un seul produit (1,1). Un compte peut n’avoir aucun contrat (0,n), cas des prospects.</li>
+    <li><b>RG6.</b> Un contrat est distribué par au plus un distributeur (0,1) : l’agence n’est pas obligatoire dans <code>AB_CONTRAT</code>.</li>
+    <li><b>RG7.</b> Un sinistre et un paiement se rattachent à un et un seul contrat (1,1). Un contrat peut n’en avoir aucun (0,n).</li>
+    <li><b>RG8.</b> Un compte réside dans au plus un territoire (0,1) : le code postal peut manquer.</li>
+    <li><b>RG9.</b> Une ligne qui viole une cardinalité (1,1) (contrat sans client existant…) n’entre pas dans la base : elle est placée en quarantaine avec la règle violée. Rien n’est supprimé en silence.</li>
+  </ul>
+
+  <h2>4. Le modèle logique (MLD) et sa mise en œuvre</h2>
+  <p>Passage au relationnel selon les règles usuelles : chaque entité devient une table ; une association (0,n)–(1,1) devient une clé étrangère côté (1,1) ; l’association réflexive RAPPROCHER, porteuse d’attributs, devient une table dont la clé est le couple de comptes.</p>
+  <div class="mld">
+SYSTEME_SOURCE(<u>code_source</u>, societe, sgbd, annee_creation)<br>
+TERRITOIRE(<u>code_postal</u>, pays, departement, region)<br>
+PRODUIT(<u>code_produit</u>, libelle, branche)<br>
+DISTRIBUTEUR(<u>code_distributeur</u>, type_canal, <i>code_source</i>)<br>
+PERSONNE(<u>personne_id</u>, nom, prenom, date_naissance, email, telephone, nb_comptes, sources)<br>
+CLIENT_SOURCE(<u>client_uid</u>, <i>code_source</i>, source_id, <i>personne_id</i>, nom, prenom, date_naissance, email, telephone, adresse, <i>code_postal</i>, date_creation, statut, num_fiscal, score_fidelite)<br>
+CONTRAT(<u>contrat_uid</u>, <i>code_source</i>, source_id, <i>client_uid</i>, <i>code_produit</i>, <i>code_distributeur</i>, date_debut, date_fin, prime_annuelle, statut)<br>
+SINISTRE(<u>sinistre_uid</u>, <i>code_source</i>, source_id, <i>contrat_uid</i>, date_survenance, montant_estime, statut, score_fraude, description)<br>
+PAIEMENT(<u>paiement_uid</u>, <i>code_source</i>, source_id, <i>contrat_uid</i>, date_paiement, montant, mode, statut, est_tardif)<br>
+PAIRE_DOUBLON(<u><i>uid_a</i>, <i>uid_b</i></u>, score, niveau, decision)<br>
+REGLE_QUALITE(<u>code_regle</u>, libelle, gravite, action)<br>
+ANOMALIE_QUALITE(<u>id</u>, <i>code_regle</i>, <i>code_source</i>, entite, uid, valeur)<br>
+QUARANTAINE(<u>entite, uid</u>, <i>motif</i>, contenu)
+  </div>
+  <p>Ce MLD est implémenté tel quel dans <code>fusion/warehouse.py</code> : contraintes <code>NOT NULL</code>, <code>CHECK</code> (prime strictement positive, score de fidélité entre 0 et 100, <code>uid_a &lt; uid_b</code> pour qu’une paire ne soit stockée qu’une fois) et clés étrangères <b>appliquées</b>. Un test vérifie après chaque exécution que <code>PRAGMA foreign_key_check</code> ne renvoie rien et qu’aucun contrat n’existe sans client. Le même schéma sert de base aux tables Hive des fichiers Parquet produits par Spark sur HDFS. Volumes chargés lors de l’exécution complète de référence :</p>
+  <!--GEN:entrepot-->
+  <p>Le mapping colonne par colonne (41 attributs, avec la transformation appliquée et sa justification) figure en <b>Annexe A</b>. Il n’est pas recopié dans le code : <code>fusion/mapping/mapping.toml</code> <i>est</i> la spécification, et le moteur l’exécute directement (Dossier 2, question 2).</p>
+</section>

@@ -1,0 +1,140 @@
+{
+ "run_id": "20261119T115039683313",
+ "date_execution": "2026-11-19T11:50:55+00:00",
+ "mode": "complet",
+ "bus": "file",
+ "lac": "local",
+ "sources_generees": null,
+ "extraction": [
+  {
+   "table": "AB_CLIENT",
+   "topic": "src.ab.client",
+   "lignes": 6000,
+   "somme_controle": 0.0,
+   "watermark": 106000,
+   "duree_s": 0.078
+  },
+  {
+   "table": "AB_CONTRAT",
+   "topic": "src.ab.contrat",
+   "lignes": 9779,
+   "somme_controle": 9885442.26,
+   "watermark": "AB-POL-0009779",
+   "duree_s": 0.114
+  },
+  {
+   "table": "AB_SINISTRE",
+   "topic": "src.ab.sinistre",
+   "lignes": 20250,
+   "somme_controle": 17173592.17,
+   "watermark": 720250,
+   "duree_s": 0.211
+  },
+  {
+   "table": "AB_PAIEMENT",
+   "topic": "src.ab.paiement",
+   "lignes": 98366,
+   "somme_controle": 12905227.06,
+   "watermark": 98366,
+   "duree_s": 0.9
+  },
+  {
+   "table": "AP_USERS",
+   "topic": "src.ap.client",
+   "lignes": 2500,
+   "somme_controle": 0.0,
+   "watermark": 7500,
+   "duree_s": 0.032
+  },
+  {
+   "table": "AP_CONTRACTS",
+   "topic": "src.ap.contrat",
+   "lignes": 3407,
+   "somme_controle": 149490.23,
+   "watermark": "APC00003407",
+   "duree_s": 0.042
+  },
+  {
+   "table": "AP_CLAIMS",
+   "topic": "src.ap.sinistre",
+   "lignes": 1093,
+   "somme_controle": 2951149.4,
+   "watermark": 31093,
+   "duree_s": 0.014
+  },
+  {
+   "table": "AP_PAYMENTS",
+   "topic": "src.ap.paiement",
+   "lignes": 50736,
+   "somme_controle": 2239061.14,
+   "watermark": "2026-10-28 23:56:26",
+   "duree_s": 0.562
+  }
+ ],
+ "silver": {
+  "consommes": {
+   "src.ab.client": 6000,
+   "src.ap.client": 2500,
+   "src.ab.contrat": 9779,
+   "src.ap.contrat": 3407,
+   "src.ab.sinistre": 20250,
+   "src.ap.sinistre": 1093,
+   "src.ab.paiement": 98366,
+   "src.ap.paiement": 50736
+  },
+  "quarantaine": 0,
+  "bronze": {
+   "src.ab.client": 6000,
+   "src.ap.client": 2500,
+   "src.ab.contrat": 9779,
+   "src.ap.contrat": 3407,
+   "src.ab.sinistre": 20250,
+   "src.ap.sinistre": 1093,
+   "src.ab.paiement": 98366,
+   "src.ap.paiement": 50736
+  },
+  "remplacements": 0
+ },
+ "entrepot": {
+  "anomalie_qualite": 4818,
+  "client_source": 8500,
+  "contrat": 13147,
+  "distributeur": 79,
+  "paiement": 148622,
+  "paire_doublon": 717,
+  "personne": 8120,
+  "produit": 10,
+  "quarantaine": 664,
+  "regle_qualite": 17,
+  "sinistre": 21198,
+  "systeme_source": 2,
+  "territoire": 56
+ },
+ "duree_totale_s": 15.81,
+ "etapes": [
+  {
+   "etape": "sources",
+   "duree_s": 0.0
+  },
+  {
+   "etape": "extraction (Talend → Kafka)",
+   "duree_s": 1.955
+  },
+  {
+   "etape": "silver (Spark)",
+   "duree_s": 10.782
+  },
+  {
+   "etape": "doublons (Spark)",
+   "duree_s": 0.247
+  },
+  {
+   "etape": "entrepôt",
+   "duree_s": 2.339
+  },
+  {
+   "etape": "gold (Spark)",
+   "duree_s": 0.378
+  }
+ ]
+}

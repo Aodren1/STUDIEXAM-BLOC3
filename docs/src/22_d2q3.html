@@ -1,0 +1,131 @@
+<section style="break-before: page">
+  <div class="question">
+    <p><b>Question 3.</b> Avec les outils dédiés, proposez et réalisez votre data pipeline (Talend, Kafka, Spark, Hadoop, etc.). Développez, avec ces outils, le dashboard qui permet de montrer la répartition des clients, les statistiques contrats, les statistiques sinistres, les statistiques financières et la matrice de doublons.</p>
+    <p class="crit"><b>C3.2</b> — <b>Critères :</b> cohérence de la mise en œuvre au regard des objectifs ; respect des spécifications fonctionnelles et architecturales.</p>
+  </div>
+
+  <h2>1. Le pipeline réalisé</h2>
+  <p>Le pipeline suit à la lettre l’architecture cible de l’énoncé (<code>BDD X Oracle / BDD Y SQL Server → Talend → Kafka → Talend/Spark → Hadoop → Dataviz</code>), avec une zone de données par étape :</p>
+  <figure>
+    <svg viewBox="0 0 1000 380" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto" role="img" aria-label="Schéma du pipeline">
+      <style>.b{fill:#fff;stroke:#111;stroke-width:1.1}.g{fill:#ededea;stroke:#111;stroke-width:1.1}.h{font:600 12.5px Cambria,Georgia,serif}.s{font:10.5px Cambria,Georgia,serif}.i{font:italic 10px Cambria,Georgia,serif}.l{stroke:#111;stroke-width:1.2;fill:none;marker-end:url(#f)}.d{stroke:#111;stroke-width:1;fill:none;stroke-dasharray:4 3}</style>
+      <defs><marker id="f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#111"/></marker></defs>
+      <rect class="b" x="10" y="90" width="150" height="70"/><text class="h" x="85" y="115" text-anchor="middle">BDD X — Oracle</text><text class="s" x="85" y="133" text-anchor="middle">AB_CLIENT, AB_CONTRAT,</text><text class="s" x="85" y="148" text-anchor="middle">AB_SINISTRE, AB_PAIEMENT</text>
+      <rect class="b" x="10" y="200" width="150" height="70"/><text class="h" x="85" y="225" text-anchor="middle">BDD Y — SQL Server</text><text class="s" x="85" y="243" text-anchor="middle">AP_USERS, AP_CONTRACTS,</text><text class="s" x="85" y="258" text-anchor="middle">AP_CLAIMS, AP_PAYMENTS</text>
+      <rect class="g" x="200" y="130" width="140" height="100"/><text class="h" x="270" y="155" text-anchor="middle">Talend</text><text class="s" x="270" y="173" text-anchor="middle">extraction par lots</text><text class="s" x="270" y="188" text-anchor="middle">filigrane incrémental</text><text class="s" x="270" y="203" text-anchor="middle">enveloppe fusion.src.v1</text><text class="i" x="270" y="220" text-anchor="middle">fusion.extract / Debezium</text>
+      <rect class="g" x="380" y="120" width="140" height="120"/><text class="h" x="450" y="145" text-anchor="middle">Kafka</text><text class="s" x="450" y="163" text-anchor="middle">8 topics src.&lt;ab|ap&gt;.*</text><text class="s" x="450" y="178" text-anchor="middle">3 partitions, clé = uid</text><text class="s" x="450" y="193" text-anchor="middle">rétention 7 jours</text><text class="s" x="450" y="208" text-anchor="middle">dlq.silver (quarantaine)</text><text class="i" x="450" y="226" text-anchor="middle">au moins une fois</text>
+      <rect class="g" x="560" y="40" width="160" height="96"/><text class="h" x="640" y="63" text-anchor="middle">Spark — silver</text><text class="s" x="640" y="81" text-anchor="middle">mapping, règles DQ01–DQ17</text><text class="s" x="640" y="96" text-anchor="middle">orphelins, upsert idempotent</text><text class="i" x="640" y="114" text-anchor="middle">silver_job.py</text>
+      <rect class="g" x="560" y="152" width="160" height="76"/><text class="h" x="640" y="175" text-anchor="middle">Spark — doublons</text><text class="s" x="640" y="193" text-anchor="middle">blocage, score, golden record</text><text class="i" x="640" y="211" text-anchor="middle">dedup_job.py</text>
+      <rect class="g" x="560" y="244" width="160" height="76"/><text class="h" x="640" y="267" text-anchor="middle">Spark — gold</text><text class="s" x="640" y="285" text-anchor="middle">agrégats Spark SQL</text><text class="i" x="640" y="303" text-anchor="middle">gold_job.py</text>
+      <rect class="b" x="760" y="60" width="110" height="250"/><text class="h" x="815" y="85" text-anchor="middle">Hadoop HDFS</text><text class="s" x="815" y="112" text-anchor="middle">/datalake/fusion</text><text class="s" x="815" y="140" text-anchor="middle">bronze/</text><text class="s" x="815" y="158" text-anchor="middle">brut, par exécution</text><text class="s" x="815" y="190" text-anchor="middle">silver/</text><text class="s" x="815" y="208" text-anchor="middle">modèle unifié</text><text class="s" x="815" y="240" text-anchor="middle">gold/</text><text class="s" x="815" y="258" text-anchor="middle">indicateurs</text><text class="i" x="815" y="290" text-anchor="middle">+ entrepôt (MCD)</text>
+      <rect class="b" x="900" y="130" width="90" height="100"/><text class="h" x="945" y="155" text-anchor="middle">Dataviz</text><text class="s" x="945" y="175" text-anchor="middle">Flask +</text><text class="s" x="945" y="190" text-anchor="middle">Chart.js</text><text class="s" x="945" y="210" text-anchor="middle">Superset</text>
+      <path class="l" d="M160,125 L200,160"/><path class="l" d="M160,235 L200,200"/><path class="l" d="M340,180 L380,180"/>
+      <path class="l" d="M520,160 L560,95"/><path class="l" d="M720,88 L760,110"/><path class="l" d="M760,190 L720,190"/><path class="l" d="M720,190 L760,205"/>
+      <path class="l" d="M760,230 L720,282"/><path class="l" d="M720,282 L760,260"/><path class="l" d="M870,180 L900,180"/>
+      <rect class="b" x="380" y="320" width="340" height="44"/><text class="h" x="550" y="338" text-anchor="middle">Airflow — DAG nocturne</text><text class="s" x="550" y="355" text-anchor="middle">extraction → jobs Spark → réconciliation et publication</text>
+      <path class="d" d="M380,342 L270,342 L270,230"/><path class="d" d="M720,342 L740,342 L740,320"/>
+      <text class="i" x="10" y="30">Chaîne de l’énoncé : BDD → Talend → Kafka → Talend/Spark → Hadoop → Dataviz</text>
+    </svg>
+    <figcaption>Figure 2 — Pipeline réalisé. Les traits pleins sont les flux de données, les tirets l’ordonnancement.</figcaption>
+  </figure>
+
+  <table class="compact">
+    <thead><tr><th>Outil</th><th>Rôle dans le pipeline</th><th>Réalisation dans le dépôt</th></tr></thead>
+    <tbody>
+      <tr><td><b>Talend</b></td><td>Extraire les huit tables, appliquer le contrat d’interface, publier sur Kafka</td><td>Conception des jobs J00 à J10 et contextes (<code>talend/</code>), tMap généré depuis le mapping ; même contrat exécuté par <code>fusion/extract.py</code>, car Talend Open Studio n’est plus distribué depuis janvier 2024 et les éditions actuelles exigent une licence</td></tr>
+      <tr><td><b>Kafka</b></td><td>Découpler sources et traitements, absorber les pics, rejouer 7 jours d’historique</td><td>Broker KRaft (<code>infra/</code>), topics créés par script, adaptateur <code>kafka-python</code> testé contre un vrai broker dans la CI ; journal local aux mêmes garanties pour le poste et la démonstration</td></tr>
+      <tr><td><b>Debezium</b></td><td>Capturer en continu les modifications des bases historiques (coexistence)</td><td>Connecteurs Oracle LogMiner et SQL Server CDC (<code>infra/connect</code>), routés vers les mêmes topics</td></tr>
+      <tr><td><b>Spark</b></td><td>Nettoyer, dédoublonner et agréger à l’échelle</td><td>Trois jobs PySpark (<code>jobs/spark</code>), soumis par <code>infra/spark/submit-all.sh</code>, testés en équivalence avec le moteur local</td></tr>
+      <tr><td><b>Hadoop (HDFS)</b></td><td>Stockage distribué des zones bronze, silver et gold</td><td>NameNode et DataNode (<code>apache/hadoop</code>) ; écriture Parquet par Spark, JSON Lines par le moteur local via l’API WebHDFS (<code>fusion/lake.py</code>), testée contre un faux NameNode</td></tr>
+      <tr><td><b>Airflow</b></td><td>Ordonnancer la nuit et reprendre sur erreur</td><td>DAG <code>infra/airflow/dag_fusion.py</code></td></tr>
+      <tr><td><b>Dataviz</b></td><td>Restituer les cinq vues demandées</td><td>Tableau de bord Flask + Chart.js (<code>fusion/web</code>), déployé ; Superset en option pour l’exploration</td></tr>
+    </tbody>
+  </table>
+  <p>Deux profils de déploiement : le <b>profil démonstration</b> (<code>docker-compose.yml</code>, un conteneur, bus et lac locaux) sert au serveur de recette et à la correction ; le <b>profil Big Data</b> (<code>infra/docker-compose.bigdata.yml</code>) démarre Kafka, HDFS, Spark et, en option, Debezium et Superset. Le code est le même : seules les variables <code>FUSION_BUS=kafka</code> et <code>FUSION_LAKE=webhdfs</code> changent.</p>
+
+  <h2>2. Contrat des messages et organisation du lac</h2>
+  <div class="grid2">
+    <div>
+      <h4>Enveloppe d’un événement (topic <code>src.ap.client</code>)</h4>
+      <pre class="code">{"schema": "fusion.src.v1", "op": "r",
+ "ts_ms": 1795086600000,
+ "source": {"systeme": "AP",
+            "db": "SQLSERVER_ASSUREPLUS",
+            "table": "AP_USERS"},
+ "key": "AP-5001",
+ "after": {"AP_USER_ID": 5001,
+           "AP_FULL_NAME": "DUPONT Marie",
+           "AP_BIRTH_DATE": "12/04/1985", …}}</pre>
+      <p class="small">La clé de message est l’identifiant préfixé : toutes les versions d’une ligne vont dans la même partition, donc dans l’ordre. Les colonnes sont publiées <b>brutes</b> : le nettoyage est fait une seule fois, par Spark.</p>
+    </div>
+    <div>
+      <h4>Arborescence HDFS</h4>
+      <pre class="code">/datalake/fusion/
+  bronze/src.ab.client/run=…/part-00000
+  bronze/src.ap.paiement/run=…/…
+  silver/client/       _SUCCESS, _schema.json
+  silver/contrat/ sinistre/ paiement/
+  silver/personne/ paire_doublon/
+  silver/anomalie_qualite/ quarantaine/
+  gold/dashboard.json
+  gold/contrats_actifs_par_branche/
+  gold/encaissements_mensuels/ …</pre>
+      <p class="small">Un lecteur ne consomme qu’un répertoire terminé (marqueur <code>_SUCCESS</code>, convention Hadoop) ; chaque écriture remplace sa partition, ce qui rend le traitement rejouable.</p>
+    </div>
+  </div>
+
+  <h2>3. Exécution mesurée</h2>
+  <p>Extraction complète des deux bases, puis publication sur Kafka :</p>
+  <!--GEN:extraction-->
+  <div class="grid2">
+    <div><!--GEN:execution--></div>
+    <div><!--GEN:reconciliation--></div>
+  </div>
+  <p>L’exécution complète prend environ 15 secondes sur le jeu de test au 1/2 000<sup>e</sup>. L’exécution incrémentale suivante, sans nouvelle donnée, prend 5 secondes : elle ne republie qu’une ligne (la borne inclusive du filigrane d’<code>AP_PAYMENTS</code>), et le chargement idempotent l’absorbe. À l’échelle réelle, multiplier les volumes par 2 000 justifie Spark : le dédoublonnage compare 924 paires au lieu des 36 millions qu’impliquerait un produit cartésien, soit, en production, quelques millions de comparaisons au lieu de 1,4 × 10<sup>14</sup>.</p>
+</section>
+
+<section style="break-before: page">
+  <h2>4. Le tableau de bord</h2>
+  <p>Le tableau de bord lit la zone gold en lecture seule et propose une rubrique par vue demandée, plus une synthèse et, pour l’administrateur, la qualité et l’exécution. Il est déployé à l’adresse <a href="{{APP_URL}}">{{APP_URL}}</a> (comptes en page 2).</p>
+  <div class="grid2">
+    <figure><div class="shot"><img src="captures/connexion.png" alt="Page de connexion"></div><figcaption>Connexion : deux profils, mots de passe hachés, jeton CSRF, limitation à 5 tentatives par 5 minutes.</figcaption></figure>
+    <figure><div class="shot"><img src="captures/mobile-synthese.png" alt="Vue mobile" style="height:62mm;object-fit:cover;object-position:top"></div><figcaption>Affichage sur téléphone (390 px de large).</figcaption></figure>
+  </div>
+  <h3>Indicateurs mesurés, par vue demandée</h3>
+  <!--GEN:kpis-->
+  <h3>Choix de conception</h3>
+  <ul>
+    <li><b>Une couleur par source, toujours la même</b> : brique pour AbAssurance, ocre pour AssurePlus, prune pour les clients communs. La palette a été validée par script : contraste suffisant, distinction pour les trois formes de daltonisme, en thème clair comme en sombre. Un filtre « Source affichée » masque une série sans jamais recolorer l’autre.</li>
+    <li><b>Chaque graphique a une vue tableau</b> (« Voir les données ») : lecture exacte, accessibilité aux lecteurs d’écran, copie dans un tableur.</li>
+    <li><b>Une carte en tuiles des régions</b> plutôt qu’une carte géographique : chaque région a la même surface et reste lisible, même la Corse et l’Outre-mer.</li>
+    <li><b>Aucun script tiers</b> : Chart.js est servi par l’application, et la politique de sécurité du contenu (CSP) interdit tout script ou style externe ou en ligne.</li>
+  </ul>
+</section>
+
+<section>
+  <h3>Synthèse</h3>
+  <figure><div class="shot h100"><img src="captures/admin-synthese.png" alt="Synthèse"></div><figcaption>Synthèse : personnes uniques après dédoublonnage, portefeuille unifié, contrats actifs par branche, encaissements mensuels.</figcaption></figure>
+  <h3>Répartition des clients</h3>
+  <figure><div class="shot h100"><img src="captures/admin-clients.png" alt="Répartition des clients"></div><figcaption>Répartition des clients : carte en tuiles des régions, pays, tranches d’âge, statut, entrées en portefeuille, multi-équipement.</figcaption></figure>
+</section>
+<section style="break-before: page">
+  <h3>Statistiques contrats</h3>
+  <figure><div class="shot h100"><img src="captures/admin-contrats.png" alt="Contrats"></div><figcaption>Contrats : actifs et prime moyenne par branche (primes AP annualisées), souscriptions mensuelles, canal de distribution, statuts, premiers distributeurs.</figcaption></figure>
+  <h3>Statistiques sinistres</h3>
+  <figure><div class="shot h100"><img src="captures/admin-sinistres.png" alt="Sinistres"></div><figcaption>Sinistres : survenance mensuelle, statuts, coût moyen par branche, distribution des montants, score de fraude d’AssurePlus.</figcaption></figure>
+</section>
+<section style="break-before: page">
+  <h3>Statistiques financières</h3>
+  <figure><div class="shot h100"><img src="captures/admin-finances.png" alt="Finances"></div><figcaption>Finances : encaissements mensuels, ratio sinistres / primes par branche avec la ligne d’équilibre à 100 %, primes annualisées, moyens et statuts de paiement.</figcaption></figure>
+  <h3>Matrice de doublons</h3>
+  <figure><div class="shot h100"><img src="captures/admin-doublons.png" alt="Matrice de doublons"></div><figcaption>Doublons : matrices par couple de sources (certaines, probables), co-occurrence des critères, distribution des scores, précision et rappel, file de validation (administrateur).</figcaption></figure>
+</section>
+<section style="break-before: page">
+  <h3>Deux rôles, deux niveaux d’accès</h3>
+  <p>L’administrateur voit l’onglet « Qualité et exécution » (règles déclenchées, réconciliation, durée des étapes, relance du pipeline) et la file des paires de doublons nominatives. L’utilisateur ne voit que des agrégats : l’onglet n’apparaît pas pour lui, et l’API répond <code>403</code> s’il appelle directement la route. La règle est donc appliquée côté serveur, pas seulement masquée dans l’interface.</p>
+  <figure><div class="shot h100"><img src="captures/admin-qualite.png" alt="Qualité et exécution"></div><figcaption>Administrateur : qualité des données et exécution du pipeline.</figcaption></figure>
+  <div class="grid2">
+    <figure><div class="shot"><img src="captures/utilisateur-doublons.png" alt="Vue utilisateur" style="height:75mm;object-fit:cover;object-position:top"></div><figcaption>Utilisateur : pas d’onglet qualité, pas de données personnelles.</figcaption></figure>
+    <figure><div class="shot"><img src="captures/admin-synthese-sombre.png" alt="Thème sombre" style="height:75mm;object-fit:cover;object-position:top"></div><figcaption>Thème sombre : palette recalculée (pas une simple inversion) et validée.</figcaption></figure>
+  </div>
+</section>

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>BCDBigData — Examen Bloc 3 — FLORIDE Aodren</title>
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+
+<section class="cover">
+  <p class="kicker">Bachelor Concepteur Développeur Big Data — Examen du bloc 3</p>
+  <h1>Développer une solution digitale</h1>
+  <p class="subtitle">Fusion AbAssurance × AssurePlus : dépôt Git, modèle de données unifié, pipeline Talend → Kafka → Spark → Hadoop, tableau de bord de validation, qualité du code et gestion des corrections</p>
+  <hr>
+  <div class="meta">
+    <div><b>Candidat</b>FLORIDE Aodren</div>
+    <div><b>Épreuve</b>Bloc 3 — Développer une solution digitale</div>
+    <div><b>Compétences évaluées</b>C3.1, C3.2, C3.3</div>
+    <div><b>Dépôt Git public</b><a href="{{GITHUB_URL}}">{{GITHUB_URL}}</a></div>
+    <div><b>Application déployée</b><a href="{{APP_URL}}">{{APP_URL}}</a></div>
+    <div><b>Date</b><!--GEN:date--></div>
+  </div>
+</section>
+
+<section style="break-before: page">
+  <h1>Liens et accès</h1>
+  <p>Tous les éléments à consulter sont regroupés ici, comme le demande l’énoncé. Les comptes ci-dessous sont des comptes de démonstration : en production, les mots de passe sont fournis par variables d’environnement (fichier <code>.env</code> non versionné) et stockés hachés.</p>
+  <!--GEN:liens-->
+  <p class="small muted">Le dépôt contient aussi les sources de ce dossier (<code>docs/</code>) : chaque tableau chiffré est généré par <code>python docs/build.py</code> depuis les résultats réels du pipeline, des tests et des outils de qualité. Les nombres utilisent l’espace comme séparateur de milliers (1 000).</p>
+</section>
+
+<section class="toc" style="break-before: page">
+  <h1>Sommaire</h1>
+  <ol>
+    <li><b>0</b>Synthèse</li>
+    <li><b>D1</b>Dossier 1 — Programmation de la solution</li>
+    <li class="sub"><b>Q1</b>Le dépôt Git : branches main et develop, convention de nommage</li>
+    <li class="sub"><b>Q2</b>La base de données finale : MCD mappé des deux bases</li>
+    <li><b>D2</b>Dossier 2 — Mobilisation des outils</li>
+    <li class="sub"><b>Q1</b>Bonnes pratiques, en particulier de data cleaning</li>
+    <li class="sub"><b>Q2</b>Framework Python, outils de data mapping et de migration</li>
+    <li class="sub"><b>Q3</b>Le data pipeline réalisé et le tableau de bord</li>
+    <li><b>D3</b>Dossier 3 — Gestion des corrections</li>
+    <li class="sub"><b>Q1</b>Outils de contrôle de la qualité du code</li>
+    <li class="sub"><b>Q2</b>Tests unitaires et couverture</li>
+    <li class="sub"><b>Q3</b>Un bug potentiel du pipeline : identification, correction, validation</li>
+    <li><b>A</b>Annexes — mapping complet, règles de qualité, exploitation</li>
+  </ol>
+
+  <h2>Synthèse</h2>
+  <p class="lead">AbAssurance (12 millions de clients, Data Warehouse Oracle) a racheté AssurePlus (5 millions de clients, SQL Server). Les Blocs 1 et 2 ont spécifié puis piloté la plateforme qui doit unifier les deux systèmes d’information. Ce Bloc 3 la <b>développe</b> : un dépôt Python public, un modèle de données unifié, un pipeline réel et un tableau de bord qui donne, pour validation du projet, les statistiques des deux bases.</p>
+  <p>Le dépôt suit un Git Flow simplifié (<code>main</code>, <code>develop</code>, branches <code>feature/</code>, <code>fix/</code>, <code>ci/</code>, <code>docs/</code>, <code>release/</code>), avec une convention de nommage <code>&lt;type&gt;/FUS-&lt;n&gt;-&lt;description&gt;</code> vérifiée automatiquement. Le modèle final (onze entités) sépare le <b>compte client tel qu’il existe dans chaque source</b> de la <b>personne</b> réelle obtenue après dédoublonnage. Cette distinction conditionne toutes les statistiques consolidées.</p>
+  <p>Le pipeline reproduit la chaîne retenue au Bloc 1 : extraction (rôle Talend) des huit tables, publication sur huit topics Kafka, puis trois traitements (silver, doublons, gold) écrits deux fois, en Python pour le poste et le serveur de démonstration, en <b>PySpark</b> pour le cluster. Les deux versions appliquent <b>le même mapping déclaratif et les mêmes règles</b>, et la CI vérifie qu’elles produisent les mêmes chiffres. Les données nettoyées vont dans un lac à trois zones (local ou <b>HDFS</b> via WebHDFS) et dans un entrepôt dont les clés étrangères appliquent le MCD. Un orphelin n’est jamais supprimé : il est mis en quarantaine avec son motif.</p>
+  <p>La qualité est contrôlée par <b>ruff</b>, <b>bandit</b> et <b>SonarCloud</b> dans la CI : des 149 alertes ruff et 7 bandit du premier passage, il n’en reste aucune, et les alertes d’injection SQL ont été corrigées par une liste blanche, pas masquées. Les <!--GEN:nb_tests--> tests locaux (plus six tests Spark et Kafka en CI) couvrent <!--GEN:cov_lignes--> des lignes. Enfin, le bug du dossier 3 a été <b>réellement rencontré</b> : sans donnée nouvelle, une seconde exécution doublait toutes les tables silver. Le contrôle de réconciliation a bloqué la publication ; le défaut a été reproduit par cinq tests, puis corrigé et validé.</p>
+</section>
