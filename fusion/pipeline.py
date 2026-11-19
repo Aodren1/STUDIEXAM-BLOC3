@@ -128,9 +128,11 @@ def run(settings: Settings | None = None, *, incremental: bool = True, strict: b
     spec = MappingSpec.load()
     bus = open_bus(settings)
     lake = open_lake(settings)
-    state = ExtractState.load(settings.data_dir / "extract_state.json") if incremental else None
     if not incremental:
         _reset_local_state(settings)
+    # mode complet : on repart d'un état vide, mais on l'ENREGISTRE (correctif FUS-9) pour que l'exécution
+    # incrémentale suivante ne republie pas toutes les lignes déjà chargées
+    state = ExtractState.load(settings.data_dir / "extract_state.json")
     try:
         with _step(timings, "extraction (Talend → Kafka)"):
             extracted = extract_all(settings.sources_dir, spec, bus, state)
@@ -140,7 +142,7 @@ def run(settings: Settings | None = None, *, incremental: bool = True, strict: b
         bus.close()
     tables = silver.store.tables
     quality = _load_anomalies(lake) if incremental else QualityLog()
-    quality.extend(silver.log)
+    quality.merge_unique(silver.log)
     lake.write_table("silver", "anomalie_qualite", [a.__dict__ for a in quality.anomalies])
 
     reconciliation = reconcile(_source_totals(settings), tables)
@@ -169,7 +171,12 @@ def run(settings: Settings | None = None, *, incremental: bool = True, strict: b
         "lac": settings.lake,
         "sources_generees": seeded,
         "extraction": [s.__dict__ for s in extracted],
-        "silver": {"consommes": silver.consommes, "quarantaine": silver.quarantaine, "bronze": silver.bronze},
+        "silver": {
+            "consommes": silver.consommes,
+            "quarantaine": silver.quarantaine,
+            "bronze": silver.bronze,
+            "remplacements": silver.remplacements,
+        },
         "entrepot": wh_counts,
         "duree_totale_s": None,
         "etapes": timings,

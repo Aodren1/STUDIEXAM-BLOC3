@@ -82,3 +82,12 @@ class QualityLog:
 
     def extend(self, other: QualityLog) -> None:
         self.anomalies.extend(other.anomalies)
+
+    def merge_unique(self, other: QualityLog) -> None:
+        """Ajoute les anomalies de `other` absentes du journal : une ligne republiée n'est pas signalée deux fois."""
+        seen = {(a.code, a.source, a.entite, a.uid) for a in self.anomalies}
+        for a in other.anomalies:
+            key = (a.code, a.source, a.entite, a.uid)
+            if key not in seen:
+                seen.add(key)
+                self.anomalies.append(a)
