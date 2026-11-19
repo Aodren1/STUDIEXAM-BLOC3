@@ -56,4 +56,5 @@
       <tr><td><code>image</code></td><td>Construction de l’image Docker, démarrage, contrôles de fumée (santé, connexion, 401 sans session, réconciliation)</td><td>oui</td></tr>
     </tbody>
   </table>
+  <p><b>Première exécution sur GitHub</b> (publication du dépôt, branche <code>main</code>, tag <code>v1.0.0</code>, 19/11/2026) : les neuf jobs ont réussi. Les deux contrôles impossibles sur le poste de développement, faute de Java et de broker, sont passés en CI : 5 tests Spark (dont l’équivalence avec le moteur local et l’idempotence après relivraison) et 1 test d’intégration contre un broker Kafka réel. Le job SonarCloud s’est arrêté proprement avec sa notice : l’analyse démarrera dès que le jeton <code>SONAR_TOKEN</code> sera ajouté aux secrets du dépôt. Les autres branches poussées ont toutes passé la même CI.</p>
 </section>

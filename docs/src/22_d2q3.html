@@ -42,6 +42,7 @@
     </tbody>
   </table>
   <p>Deux profils de déploiement : le <b>profil démonstration</b> (<code>docker-compose.yml</code>, un conteneur, bus et lac locaux) sert au serveur de recette et à la correction ; le <b>profil Big Data</b> (<code>infra/docker-compose.bigdata.yml</code>) démarre Kafka, HDFS, Spark et, en option, Debezium et Superset. Le code est le même : seules les variables <code>FUSION_BUS=kafka</code> et <code>FUSION_LAKE=webhdfs</code> changent.</p>
+  <p>Le profil démonstration est déployé sur le serveur de recette depuis le tag <code>v1.0.0</code> (clone du dépôt public, <code>docker compose up -d --build</code>, secret de session généré sur le serveur). Au démarrage, le conteneur a généré les sources, exécuté le pipeline complet, puis il est passé à l’état <i>healthy</i>. Contrôles faits après le déploiement : <code>/api/sante</code> renvoie <code>gold: true</code> ; sans session, les API renvoient 401 ; le compte <code>admin</code> accède à toutes les rubriques ; le compte <code>analyste</code> reçoit 403 sur la qualité et sur les paires nominatives.</p>
 
   <h2>2. Contrat des messages et organisation du lac</h2>
   <div class="grid2">
