@@ -1,0 +1,7 @@
+ "mode": "complet",
+ "duree_totale_s": 15.36,
+--- exécution incrémentale n°2 (aucune nouvelle donnée source)
+    report = run(settings, incremental=not args.complet)
+  File "C:\Users\Admin\Documents\devao\STUDI\EXAM5\fusion\pipeline.py", line 149, in run
+    raise ReconciliationError(f"réconciliation en échec : {ecarts}")
+fusion.pipeline.ReconciliationError: réconciliation en échec : [{'table_source': 'AB_CLIENT', 'entite': 'client', 'lignes_source': 6000, 'lignes_silver': 12000, 'ecart': 6000}, {'table_source': 'AP_USERS', 'entite': 'client', 'lignes_source': 2500, 'lignes_silver': 5000, 'ecart': 2500}, {'table_source': 'AB_CONTRAT', 'entite': 'contrat', 'lignes_source': 9779, 'lignes_silver': 19558, 'ecart': 9779}, {'table_source': 'AP_CONTRACTS', 'entite': 'contrat', 'lignes_source': 3407, 'lignes_silver': 6814, 'ecart': 3407}, {'table_source': 'AB_SINISTRE', 'entite': 'sinistre', 'lignes_source': 20250, 'lignes_silver': 40500, 'ecart': 20250}, {'table_source': 'AP_CLAIMS', 'entite': 'sinistre', 'lignes_source': 1093, 'lignes_silver': 2186, 'ecart': 1093}, {'table_source': 'AB_PAIEMENT', 'entite': 'paiement', 'lignes_source': 98366, 'lignes_silver': 196732, 'ecart': 98366}, {'table_source': 'AP_PAYMENTS', 'entite': 'paiement', 'lignes_source': 50736, 'lignes_silver': 101472, 'ecart': 50736}]

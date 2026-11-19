@@ -1,0 +1,18 @@
+>       run(settings, incremental=True)  # levait ReconciliationError (écart = +100 % sur chaque table)
+>           raise ReconciliationError(f"réconciliation en échec : {ecarts}")
+E           fusion.pipeline.ReconciliationError: réconciliation en échec : [{'table_source': 'AB_CLIENT', 'entite': 'client', 'lignes_source': 300, 'lignes_silver': 600, 'ecart': 300}, {'table_source': 'AP_USERS', 'entite': 'client', 'lignes_source': 125, 'lignes_silver': 250, 'ecart': 125}, {'table_source': 'AB_CONTRAT', 'entite': 'contrat', 'lignes_source': 486, 'lignes_silver': 972, 'ecart': 486}, {'table_source': 'AP_CONTRACTS', 'entite': 'contrat', 'lignes_source': 181, 'lignes_silver': 362, 'ecart': 181}, {'table_source': 'AB_SINISTRE', 'entite': 'sinistre', 'lignes_source': 874, 'lignes_silver': 1748, 'ecart': 874}, {'table_source': 'AP_CLAIMS', 'entite': 'sinistre', 'lignes_source': 62, 'lignes_silver': 124, 'ecart': 62}, {'table_source': 'AB_PAIEMENT', 'entite': 'paiement', 'lignes_source': 4728, 'lignes_silver': 9456, 'ecart': 4728}, {'table_source': 'AP_PAYMENTS', 'entite': 'paiement', 'lignes_source': 2796, 'lignes_silver': 5592, 'ecart': 2796}]
+fusion\pipeline.py:149: ReconciliationError
+E       FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\Admin\\AppData\\Local\\Temp\\pytest-of-Admin\\pytest-18\\test_mode_complet_enregistre_l0\\extract_state.json'
+..\..\..\..\AppData\Local\Python\pythoncore-3.14-64\Lib\pathlib\__init__.py:771: FileNotFoundError
+E       AssertionError: assert {'client': 85...ement': 15048} == {'client': 42...iement': 7524}
+tests\test_idempotence.py:65: AssertionError
+E       AssertionError: assert 7525 == 7524
+tests\test_idempotence.py:79: AssertionError
+E       AssertionError: assert 2 == 1
+tests\test_idempotence.py:93: AssertionError
+FAILED tests/test_idempotence.py::test_rejeu_incremental_sans_nouvelle_donnee
+FAILED tests/test_idempotence.py::test_mode_complet_enregistre_les_filigranes
+FAILED tests/test_idempotence.py::test_relivraison_apres_arret_avant_commit
+FAILED tests/test_idempotence.py::test_borne_inclusive_du_filigrane_ap_payments
+FAILED tests/test_idempotence.py::test_la_derniere_version_d_une_ligne_l_emporte
+5 failed in 6.23s

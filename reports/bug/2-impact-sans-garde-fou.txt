@@ -1,0 +1,9 @@
+Exécution n°2 interrompue à l'entrepôt : IntegrityError UNIQUE constraint failed: client_source.code_source, client_source.source_id
+Indicateurs après l'exécution n°1 : {"encaisse_12_mois": 8579860.23, "ratio_sp_12_mois": 53.6, "contrats_actifs": 9402, "personnes": 8151, "taux_doublons": 4.1}
+Gold publié après l'exécution n°2 : {"encaisse_12_mois": 8579860.23, "ratio_sp_12_mois": 53.6, "contrats_actifs": 9402, "personnes": 8151, "taux_doublons": 4.1}
+
+Gold calculé sur le silver (chemin Spark, sans entrepôt) :
+  nuit 1 : {"encaisse_12_mois": 8579860.23, "primes_annualisees": 8203116.47, "contrats_actifs": 9402, "taux_doublons": 4.1}
+  nuit 2 : {"encaisse_12_mois": 17159720.46, "primes_annualisees": 16406232.94, "contrats_actifs": 18804, "taux_doublons": 4.1}
+
+Relivraison après arrêt avant commit : paiements silver = 298204 (attendu 149 102)
