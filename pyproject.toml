@@ -1,0 +1,85 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fusion-data"
+version = "1.0.0"
+description = "Plateforme de données AbAssurance × AssurePlus : pipeline Talend → Kafka → Spark → HDFS et tableau de bord de validation"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Aodren Floride" }]
+dependencies = [
+  "flask>=3.1,<4",
+  "waitress>=3.0,<4",
+]
+
+[project.optional-dependencies]
+kafka = ["kafka-python>=2.0.2"]
+spark = ["pyspark==3.5.3"]
+dev = ["pytest>=8", "pytest-cov>=6", "ruff>=0.8", "bandit>=1.8"]
+
+[project.scripts]
+fusion = "fusion.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["fusion*"]
+
+[tool.setuptools.package-data]
+fusion = ["mapping/*.toml", "sources/ddl/*.sql", "web/templates/*.html", "web/static/**/*"]
+
+# ---------------------------------------------------------------- qualité
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+extend-exclude = ["docs/.tmp"]
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, I isort, B bugbear, UP pyupgrade, C90 complexité,
+# N nommage, SIM simplifications, S règles de sécurité (bandit), PL pylint, RUF
+select = ["E", "W", "F", "I", "B", "UP", "C90", "N", "SIM", "S", "PL", "RUF"]
+ignore = [
+  "PLR2004",  # constantes métier (seuils, tailles) documentées sur place
+  "PLR0913",  # fonctions de transformation à nombreux paramètres nommés
+  "RUF001", "RUF002", "RUF003",  # typographie française (espaces insécables, ×, ’)
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "PLR0915", "PLC0415"]
+"jobs/**" = ["PLC0415"]
+"fusion/sources/generator.py" = ["S311"]  # données synthétiques : pas d'usage cryptographique du hasard
+
+[tool.ruff.lint.pylint]
+max-branches = 14
+max-statements = 60
+
+# ---------------------------------------------------------------- tests
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+  "spark: nécessite pyspark et une JVM (exécuté dans la CI)",
+  "kafka: nécessite un broker Kafka joignable (KAFKA_BOOTSTRAP)",
+  "slow: jeu de données complet",
+]
+
+[tool.coverage.run]
+source = ["fusion"]
+branch = true
+omit = ["fusion/__main__.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+precision = 1
+exclude_also = [
+  "if __name__ == .__main__.:",
+  "raise NotImplementedError",
+  "if TYPE_CHECKING:",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "jobs"]

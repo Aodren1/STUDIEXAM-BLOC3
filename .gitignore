@@ -1,0 +1,33 @@
+# environnements Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# outils
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.scannerwork/
+
+# données générées (sources simulées, bus, lac, entrepôt) : reproductibles par `python -m fusion run`
+data/
+
+# énoncé Studi : reproduction interdite ; seul le dossier final est versionné
+*.pdf
+!docs/BCDBigData_Examen_B3_copiearendre_FLORIDE_Aodren.pdf
+
+# fichiers intermédiaires du dossier
+docs/dossier.html
+docs/.tmp/
+
+# poste de travail
+.claude/
+.idea/
+.vscode/
+*.log
