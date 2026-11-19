@@ -1,0 +1,42 @@
+entite;attribut_cible;type_cible;table_ab;colonne_ab;transformation_ab;table_ap;colonne_ap;transformation_ap;regle
+client;client_uid;VARCHAR(20);AB_CLIENT;AB_CLIENT_ID;cle_source;AP_USERS;AP_USER_ID;cle_source;Identifiant préfixé par la source (AB-100001, AP-5001) : les deux bases numérotent à partir de petits entiers, une clé brute entrerait en collision.
+client;source_id;VARCHAR(30);AB_CLIENT;AB_CLIENT_ID;texte;AP_USERS;AP_USER_ID;texte;Identifiant d'origine conservé pour la traçabilité (lignage) et les retours vers la source.
+client;nom;VARCHAR(100);AB_CLIENT;AB_NOM;majuscules;AP_USERS;AP_FULL_NAME;nom_depuis_nom_complet;AP ne stocke qu'un nom complet : le nom est la partie en capitales, sinon le dernier mot (DQ04).
+client;prenom;VARCHAR(100);AB_CLIENT;AB_PRENOM;prenom;AP_USERS;AP_FULL_NAME;prenom_depuis_nom_complet;Casse de titre, prénoms composés respectés (Jean-Pierre).
+client;date_naissance;DATE;AB_CLIENT;AB_DATE_NAISSANCE;date_naissance_ab;AP_USERS;AP_BIRTH_DATE;date_naissance_ap;AP_BIRTH_DATE est un VARCHAR(10) non contrôlé : formats JJ/MM/AAAA convertis (DQ01), sentinelles 1900-01-01 et valeurs impossibles mises à NULL (DQ02).
+client;email;VARCHAR(150);AB_CLIENT;AB_EMAIL;email;AP_USERS;AP_MAIL_ADDRESS;email;"Minuscules, espaces retirés, syntaxe vérifiée ; invalide → NULL (DQ03). Clé de rapprochement des doublons."
+client;code_postal;VARCHAR(10);AB_CLIENT;AB_CODE_POSTAL;code_postal;AP_USERS;AP_ZIP_CODE;code_postal;Majuscules et espaces normalisés (l-1009 → L-1009).
+client;pays;CHAR(2);AB_CLIENT;AB_CODE_POSTAL;pays;AP_USERS;AP_ZIP_CODE;pays;Aucune des deux bases ne stocke le pays : il est déduit du format du code postal (FR, BE, LU, NL).
+client;region;VARCHAR(40);AB_CLIENT;AB_CODE_POSTAL;region;AP_USERS;AP_ZIP_CODE;region;"Région administrative déduite du département (clients français) ; alimente la répartition géographique."
+client;telephone;VARCHAR(16);AB_CLIENT;AB_TELEPHONE;telephone;AP_USERS;AP_PHONE_NUMBER;telephone;"Format E.164 ; un numéro national prend l'indicatif du pays du client (déduit du code postal), non normalisable → NULL (DQ12)."
+client;adresse;VARCHAR(255);AB_CLIENT;AB_ADRESSE;adresse;AP_USERS;AP_STREET_ADDRESS;adresse;Majuscules sans accent, abréviations de voie développées (R → RUE, BD → BOULEVARD) pour comparer les adresses.
+client;date_creation;TIMESTAMP;AB_CLIENT;AB_DATE_CREATION;horodatage;AP_USERS;AP_CREATED_AT;horodatage;TIMESTAMP Oracle (fractions de seconde tronquées) et DATETIME SQL Server ramenés au même format.
+client;statut;VARCHAR(12);AB_CLIENT;AB_STATUT_CLIENT;statut_client;AP_USERS;AP_CUSTOMER_STATUS;statut_client;"Référentiel unifié ACTIF / INACTIF / RESILIE / PROSPECT ; active → ACTIF, churned → RESILIE, lead → PROSPECT (DQ05 si casse non conforme)."
+client;num_fiscal;VARCHAR(30);AB_CLIENT;AB_NUM_FISCAL;num_fiscal;AP_USERS;—;—;"Propre à AbAssurance ; absent pour un client français → DQ11 (donnée sensible : jamais exposée au tableau de bord)."
+client;score_fidelite;SMALLINT;AB_CLIENT;—;—;AP_USERS;AP_LOYALTY_SCORE;entier;"Propre à AssurePlus (0–100) ; NULL pour les clients AbAssurance, non extrapolé."
+contrat;contrat_uid;VARCHAR(40);AB_CONTRAT;AB_POLICY_NUMBER;cle_source;AP_CONTRACTS;AP_CONTRACT_REF;cle_source;Numéro de police / référence de contrat préfixé par la source.
+contrat;source_id;VARCHAR(30);AB_CONTRAT;AB_POLICY_NUMBER;texte;AP_CONTRACTS;AP_CONTRACT_REF;texte;Référence d'origine conservée.
+contrat;client_uid;VARCHAR(20);AB_CONTRAT;AB_CLIENT_ID;cle_source;AP_CONTRACTS;AP_USER_ID;cle_source;"Clé étrangère vers CLIENT_SOURCE ; non déclarée dans les sources, vérifiée après chargement (DQ06)."
+contrat;code_produit;VARCHAR(30);AB_CONTRAT;AB_TYPE_ASSURANCE;produit;AP_CONTRACTS;AP_PRODUCT_CODE;produit;AB ne connaît que la branche (SANTE…), AP un code produit (AUTO_TIERS…) : les deux alimentent le référentiel PRODUIT.
+contrat;branche;VARCHAR(12);AB_CONTRAT;AB_TYPE_ASSURANCE;branche;AP_CONTRACTS;AP_PRODUCT_CODE;branche;Regroupement commun AUTO / HABITATION / SANTE / PRO / ASSISTANCE, base des statistiques contrats et sinistres.
+contrat;date_debut;DATE;AB_CONTRAT;AB_DATE_DEBUT;date;AP_CONTRACTS;AP_START_DATE;date;DATE Oracle et DATETIME SQL Server ramenés à une DATE.
+contrat;date_fin;DATE;AB_CONTRAT;AB_DATE_FIN;date;AP_CONTRACTS;AP_END_DATE;date;Date d'échéance ou de résiliation.
+contrat;prime_annuelle;DECIMAL(10,2);AB_CONTRAT;AB_PRIME_ANNUELLE;montant → prime_positive;AP_CONTRACTS;AP_MONTHLY_PREMIUM;montant → mensuelle_vers_annuelle → prime_positive;Unité commune : prime ANNUELLE. AP stocke une prime mensuelle, multipliée par 12. Prime ≤ 0 → NULL (DQ07).
+contrat;statut;VARCHAR(12);AB_CONTRAT;AB_STATUT_CONTRAT;statut_contrat;AP_CONTRACTS;AP_CONTRACT_STATE;statut_contrat;"Référentiel ACTIF / RESILIE / SUSPENDU / EN_ATTENTE ; Active, ACTIVE, active → ACTIF (DQ05)."
+contrat;canal;VARCHAR(10);AB_CONTRAT;=AGENCE;—;AP_CONTRACTS;AP_BROKER_CODE;canal_ap;"AB distribue en agence ; AP par courtier (code renseigné) ou en direct sur l'application mobile."
+contrat;code_distributeur;VARCHAR(30);AB_CONTRAT;AB_AGENCE_ID;agence;AP_CONTRACTS;AP_BROKER_CODE;distributeur_ap;Entité DISTRIBUTEUR commune : agence AB (AG-007), courtier AP (BRK-012) ou APP-MOBILE.
+sinistre;sinistre_uid;VARCHAR(20);AB_SINISTRE;AB_CLAIM_ID;cle_source;AP_CLAIMS;AP_SINISTRE_NUM;cle_source;Identifiant préfixé par la source.
+sinistre;source_id;VARCHAR(30);AB_SINISTRE;AB_CLAIM_ID;texte;AP_CLAIMS;AP_SINISTRE_NUM;texte;Identifiant d'origine conservé.
+sinistre;contrat_uid;VARCHAR(40);AB_SINISTRE;AB_POLICY_NUMBER;cle_source;AP_CLAIMS;AP_CONTRACT_REF;cle_source;Clé étrangère vers CONTRAT, vérifiée après chargement (DQ10).
+sinistre;date_survenance;TIMESTAMP;AB_SINISTRE;AB_DATE_SINISTRE;date_sinistre;AP_CLAIMS;AP_INCIDENT_DATE;date_sinistre;AP_INCIDENT_DATE est un VARCHAR(19) : trois formats constatés convertis (DQ08), valeurs impossibles → NULL (DQ09).
+sinistre;montant_estime;DECIMAL(12,2);AB_SINISTRE;AB_MONTANT_ESTIME;montant → montant_sinistre;AP_CLAIMS;AP_ESTIMATED_AMOUNT;montant → montant_sinistre;"Montant en euros ; négatif ou supérieur à 1 M€ → NULL et signalé (DQ17)."
+sinistre;statut;VARCHAR(16);AB_SINISTRE;AB_STATUT_SINISTRE;statut_sinistre;AP_CLAIMS;AP_CLAIM_STATUS;statut_sinistre;Référentiel OUVERT / EN_INSTRUCTION / CLOS_INDEMNISE / REFUSE (EN_COURS, UNDER_REVIEW → EN_INSTRUCTION).
+sinistre;score_fraude;DECIMAL(5,2);AB_SINISTRE;—;—;AP_CLAIMS;AP_FRAUD_SCORE;decimal;"Propre à AssurePlus ; NULL côté AB (pas de modèle de fraude), à généraliser avec le futur modèle IA."
+sinistre;description;TEXT;AB_SINISTRE;AB_DESCRIPTION;texte;AP_CLAIMS;AP_CLAIM_COMMENT;texte;"CLOB Oracle et NVARCHAR(MAX) SQL Server ; texte libre, non analysé à ce stade."
+paiement;paiement_uid;VARCHAR(40);AB_PAIEMENT;AB_PAYMENT_ID;cle_source;AP_PAYMENTS;AP_PAYMENT_REF;cle_source;NUMBER Oracle ou GUID SQL Server, préfixé : clé d'idempotence du chargement (un paiement rejoué n'est compté qu'une fois).
+paiement;source_id;VARCHAR(40);AB_PAIEMENT;AB_PAYMENT_ID;texte;AP_PAYMENTS;AP_PAYMENT_REF;texte;Identifiant d'origine conservé.
+paiement;contrat_uid;VARCHAR(40);AB_PAIEMENT;AB_POLICY_NUMBER;cle_source;AP_PAYMENTS;AP_CONTRACT_REF;cle_source;Clé étrangère vers CONTRAT, vérifiée après chargement (DQ14).
+paiement;date_paiement;TIMESTAMP;AB_PAIEMENT;AB_DATE_PAIEMENT;horodatage;AP_PAYMENTS;AP_PAYMENT_DATETIME;horodatage;DATE Oracle (minuit) et DATETIME SQL Server.
+paiement;montant;DECIMAL(10,2);AB_PAIEMENT;AB_MONTANT;montant;AP_PAYMENTS;AP_AMOUNT_PAID;montant;Montant encaissé en euros.
+paiement;mode;VARCHAR(12);AB_PAIEMENT;AB_MODE_PAIEMENT;mode_paiement;AP_PAYMENTS;AP_PAYMENT_CHANNEL;mode_paiement;Référentiel PRELEVEMENT / CARTE / CHEQUE / VIREMENT / PORTEFEUILLE (SEPA_DD → PRELEVEMENT, APPLE_PAY → PORTEFEUILLE).
+paiement;statut;VARCHAR(10);AB_PAIEMENT;—;statut_paiement_ab;AP_PAYMENTS;AP_TRANSACTION_STATUS;statut_paiement;AB_PAIEMENT n'a pas de statut : un paiement présent est réputé encaissé (REUSSI, DQ13 tracée une fois).
