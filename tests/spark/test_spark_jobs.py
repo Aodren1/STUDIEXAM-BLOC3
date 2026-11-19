@@ -102,3 +102,18 @@ def test_dedoublonnage_distribue(engines, spark):
     ref = run_dedup(local.store.tables["client"]).stats
     assert counts.get("CERTAIN", 0) == ref["paires_certaines"]
     assert counts.get("PROBABLE", 0) == ref["paires_probables"]
+
+
+def test_silver_spark_idempotent_apres_relivraison(small_sources, tmp_path, spark):
+    """Correctif FUS-9 côté Spark : des événements publiés deux fois ne doublent pas le silver."""
+    from jobs.spark import silver_job
+
+    spec = MappingSpec.load()
+    bus = FileBus(tmp_path / "bus")
+    extract_all(small_sources, spec, bus)
+    extract_all(small_sources, spec, bus)  # republication complète (rejeu)
+    bus.close()
+    counts = silver_job.main(["--bus-dir", str(tmp_path / "bus"), "--out", str(tmp_path / "lake")])
+    local = run_silver(FileBus(tmp_path / "bus"), spec, LocalLake(tmp_path / "lake-local"), "t", incremental=False)
+    for entite in ("client", "contrat", "sinistre", "paiement"):
+        assert counts[entite] == local.store.count(entite), entite

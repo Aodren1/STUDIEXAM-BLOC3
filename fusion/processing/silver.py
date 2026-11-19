@@ -4,6 +4,11 @@ Pour chaque message : contrôle de l'enveloppe (sinon quarantaine DQ16), applica
 écriture dans la table silver de l'entité. Après chargement : contrôles d'intégrité référentielle
 (orphelins DQ06, DQ10, DQ14) et règle de gestion DQ15. Les offsets ne sont validés qu'une fois la
 zone silver écrite (livraison au moins une fois).
+
+Idempotence (correctif FUS-9) : une même ligne source peut être reçue plusieurs fois (rejeu, borne
+inclusive d'un filigrane, relivraison Kafka après un arrêt avant commit). Le silver est donc indexé
+par identifiant : chaque réception REMPLACE la version précédente (upsert, la dernière version reçue
+l'emporte ; l'ordre est garanti par clé car une clé va toujours dans la même partition).
 """
 
 from __future__ import annotations
@@ -23,22 +28,40 @@ TOLERANCE_FIN_CONTRAT_JOURS = 31
 GROUP = "spark-silver"
 
 
+#: Marqueurs posés par les contrôles d'intégrité, conservés quand une nouvelle version remplace l'ancienne
+#: (sinon l'anomalie d'origine serait signalée une seconde fois).
+MARQUEURS = ("est_orphelin", "est_tardif")
+
+
 @dataclass
 class SilverStore:
-    """Tables silver en mémoire, une liste d'enregistrements par entité."""
+    """Tables silver en mémoire, indexées par identifiant : l'écriture est un upsert idempotent."""
 
-    tables: dict[str, list[dict[str, Any]]] = field(default_factory=lambda: {e: [] for e in ENTITES})
+    rows: dict[str, dict[str, dict[str, Any]]] = field(default_factory=lambda: {e: {} for e in ENTITES})
+    remplacements: int = 0
 
     def add(self, entite: str, record: dict[str, Any]) -> None:
-        self.tables[entite].append(record)
+        uid = record[f"{entite}_uid"]
+        previous = self.rows[entite].get(uid)
+        if previous is not None:
+            self.remplacements += 1
+            for m in MARQUEURS:
+                if m in previous and m not in record:
+                    record[m] = previous[m]
+        self.rows[entite][uid] = record
+
+    @property
+    def tables(self) -> dict[str, list[dict[str, Any]]]:
+        return {e: list(rows.values()) for e, rows in self.rows.items()}
 
     def load(self, lake: Lake) -> None:
         for e in ENTITES:
             for rec in lake.read_table("silver", e):
                 self.add(e, rec)
+        self.remplacements = 0
 
     def count(self, entite: str) -> int:
-        return len(self.tables[entite])
+        return len(self.rows[entite])
 
 
 @dataclass
@@ -48,6 +71,7 @@ class SilverResult:
     consommes: dict[str, int]
     quarantaine: int
     bronze: dict[str, int]
+    remplacements: int = 0  # messages déjà chargés, reçus à nouveau et absorbés par l'upsert
 
 
 def valid_envelope(value: Any) -> bool:
@@ -113,7 +137,7 @@ def run_silver(
         for entite in ENTITES:
             for src in ("AB", "AP"):
                 bus.commit(topic_for(src, entite), group)
-    return SilverResult(store, log, consommes, quarantaine, bronze)
+    return SilverResult(store, log, consommes, quarantaine, bronze, store.remplacements)
 
 
 def check_integrity(store: SilverStore, log: QualityLog) -> None:

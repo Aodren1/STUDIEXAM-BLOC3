@@ -1,0 +1,6 @@
+Exécution incrémentale n°2 après correctif : 20261119T113007161486 - 5.05 s
+Lignes republiées par l'extraction : {'AP_PAYMENTS': 1}
+Messages absorbés par l'upsert silver : 1
+Réconciliation : OK
+Encaissé 12 mois : 8579860.23 | contrats actifs : 9402
+5 passed in 5.35s

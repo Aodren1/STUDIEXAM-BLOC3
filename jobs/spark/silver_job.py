@@ -17,7 +17,7 @@ import json
 from collections.abc import Iterator
 from pathlib import Path
 
-from pyspark.sql import DataFrame, Row, SparkSession
+from pyspark.sql import DataFrame, Row, SparkSession, Window
 from pyspark.sql import functions as F
 from pyspark.sql import types as T
 
@@ -126,11 +126,12 @@ def build_silver(spark: SparkSession, events: DataFrame, spec_raw: dict) -> dict
     out = out.cache()
     tables: dict[str, DataFrame] = {}
     for entite in ENTITES:
-        recs = out.filter((F.col("kind") == "enregistrement") & (F.col("entite") == entite))
+        recs = latest_version(out.filter((F.col("kind") == "enregistrement") & (F.col("entite") == entite)))
         tables[entite] = recs.select(F.from_json("payload", entity_schema(spec_raw, entite)).alias("r")).select("r.*")
     tables = flag_orphans(tables)
     tables["anomalie_qualite"] = (
         out.filter(F.col("kind") == "anomalie")
+        .dropDuplicates(["entite", "uid", "payload"])  # une ligne republiée n'est signalée qu'une fois
         .select(
             F.from_json("payload", "code STRING, source STRING, entite STRING, uid STRING, valeur STRING").alias("a")
         )
@@ -140,6 +141,14 @@ def build_silver(spark: SparkSession, events: DataFrame, spec_raw: dict) -> dict
         "entite", "partition", "offset", "payload"
     )
     return tables
+
+
+def latest_version(recs: DataFrame) -> DataFrame:
+    """Upsert idempotent (correctif FUS-9) : une ligne source reçue plusieurs fois (rejeu, borne inclusive,
+    relivraison) ne garde que sa dernière version. Une clé va toujours dans la même partition Kafka :
+    l'offset le plus grand est donc la version la plus récente."""
+    w = Window.partitionBy("uid").orderBy(F.col("offset").desc())
+    return recs.withColumn("_rang", F.row_number().over(w)).filter(F.col("_rang") == 1).drop("_rang")
 
 
 def flag_orphans(t: dict[str, DataFrame]) -> dict[str, DataFrame]:

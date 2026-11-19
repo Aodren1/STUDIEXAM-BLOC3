@@ -43,14 +43,25 @@ def test_rejeu_incremental_sans_nouvelle_donnee(data_dir):
     assert apres["finances"]["kpi"] == avant["finances"]["kpi"]
     assert apres["contrats"]["kpi"]["actifs_total"] == avant["contrats"]["kpi"]["actifs_total"]
     assert all(r["ecart"] == 0 for r in apres["qualite"]["reconciliation"])
+    # une ligne republiée ne déclenche pas une seconde fois ses anomalies
+    assert [r["total"] for r in apres["qualite"]["regles"]] == [r["total"] for r in avant["qualite"]["regles"]]
+    assert apres["qualite"]["execution"]["silver"]["remplacements"] > 0
 
 
 def test_mode_complet_enregistre_les_filigranes(data_dir):
     settings = Settings(data_dir=data_dir, ref_date=REF_DATE)
     run(settings, incremental=False)
     marks = json.loads((data_dir / "extract_state.json").read_text(encoding="utf-8"))
-    assert set(marks) == {"AB_CLIENT", "AB_CONTRAT", "AB_SINISTRE", "AB_PAIEMENT", "AP_USERS", "AP_CONTRACTS",
-                          "AP_CLAIMS", "AP_PAYMENTS"}
+    assert set(marks) == {
+        "AB_CLIENT",
+        "AB_CONTRAT",
+        "AB_SINISTRE",
+        "AB_PAIEMENT",
+        "AP_USERS",
+        "AP_CONTRACTS",
+        "AP_CLAIMS",
+        "AP_PAYMENTS",
+    }
 
 
 def test_relivraison_apres_arret_avant_commit(small_sources, tmp_path):
@@ -83,10 +94,19 @@ def test_borne_inclusive_du_filigrane_ap_payments(small_sources, tmp_path):
 def test_la_derniere_version_d_une_ligne_l_emporte(tmp_path):
     spec = MappingSpec.load()
     bus = FileBus(tmp_path / "bus")
-    row = {"AB_CLIENT_ID": 1, "AB_NOM": "MARTIN", "AB_PRENOM": "Léa", "AB_DATE_NAISSANCE": "1990-01-01",
-           "AB_EMAIL": "ancienne@free.fr", "AB_TELEPHONE": "0102030405", "AB_ADRESSE": "1 rue X",
-           "AB_CODE_POSTAL": "75011", "AB_NUM_FISCAL": "1", "AB_DATE_CREATION": "2020-01-01 00:00:00",
-           "AB_STATUT_CLIENT": "ACTIF"}
+    row = {
+        "AB_CLIENT_ID": 1,
+        "AB_NOM": "MARTIN",
+        "AB_PRENOM": "Léa",
+        "AB_DATE_NAISSANCE": "1990-01-01",
+        "AB_EMAIL": "ancienne@free.fr",
+        "AB_TELEPHONE": "0102030405",
+        "AB_ADRESSE": "1 rue X",
+        "AB_CODE_POSTAL": "75011",
+        "AB_NUM_FISCAL": "1",
+        "AB_DATE_CREATION": "2020-01-01 00:00:00",
+        "AB_STATUT_CLIENT": "ACTIF",
+    }
     bus.produce("src.ab.client", "AB-1", envelope("AB", "AB_CLIENT", "AB-1", row))
     bus.produce("src.ab.client", "AB-1", envelope("AB", "AB_CLIENT", "AB-1", {**row, "AB_EMAIL": "nouvelle@free.fr"}))
     res = run_silver(bus, spec, LocalLake(tmp_path / "lake"), "r1")
