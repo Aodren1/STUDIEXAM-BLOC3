@@ -1,0 +1,71 @@
+<section class="dossier">
+  <h1>Dossier 1 — Programmation de la solution</h1>
+  <div class="question">
+    <p><b>Question 1.</b> Créez un repository Git (python de préférence) public incluant une branche main, une branche develop et une convention de nommage des branches documentée.</p>
+    <p class="crit"><b>C3.1</b> Programmer la solution à partir des documents de spécification, dans le cadre de l’approche itérative choisie, en respectant les standards de qualité et de sécurité. <b>Critères :</b> lisibilité et maintenabilité du code ; respect des spécifications fonctionnelles et architecturales.</p>
+  </div>
+
+  <h2>1. Le dépôt</h2>
+  <p>Le dépôt public <a href="{{GITHUB_URL}}">{{GITHUB_URL}}</a> est un projet Python 3.11 à 3.13 empaqueté avec <code>pyproject.toml</code> (paquet <code>fusion-data</code>, commande <code>fusion</code>). Son organisation suit les couches de l’architecture cible du Bloc 1, de sorte qu’un développeur retrouve dans le code la même découpe que dans le schéma d’architecture.</p>
+  <table class="compact">
+    <thead><tr><th>Dossier</th><th>Contenu</th><th>Couche de l’architecture</th></tr></thead>
+    <tbody>
+      <tr><td><code>fusion/sources</code></td><td>DDL Oracle et SQL Server de l’annexe ; générateur des deux bases de test</td><td>Bases X (Oracle) et Y (SQL Server)</td></tr>
+      <tr><td><code>fusion/extract.py</code></td><td>Extraction par lots, filigrane incrémental, enveloppe d’événement</td><td>Talend</td></tr>
+      <tr><td><code>fusion/bus</code></td><td>Contrat du bus ; adaptateur Kafka et journal local équivalent</td><td>Kafka</td></tr>
+      <tr><td><code>fusion/mapping</code>, <code>cleaning.py</code>, <code>quality.py</code></td><td>Mapping déclaratif (<code>mapping.toml</code>), règles de nettoyage, catalogue DQ</td><td>Talend / Spark</td></tr>
+      <tr><td><code>fusion/processing</code>, <code>jobs/spark</code></td><td>Silver, dédoublonnage, gold : moteur Python et jobs PySpark</td><td>Spark</td></tr>
+      <tr><td><code>fusion/lake.py</code>, <code>warehouse.py</code></td><td>Lac bronze / silver / gold (local ou WebHDFS) ; entrepôt conforme au MCD</td><td>Hadoop (HDFS)</td></tr>
+      <tr><td><code>fusion/web</code></td><td>Tableau de bord Flask, deux rôles, API de la zone gold</td><td>Dataviz</td></tr>
+      <tr><td><code>infra</code>, <code>talend</code>, <code>Dockerfile</code></td><td>Kafka, HDFS, Spark, Debezium, Airflow ; conception des jobs Talend ; image de déploiement</td><td>Exploitation</td></tr>
+      <tr><td><code>tests</code>, <code>.github/workflows</code>, <code>reports</code></td><td>Tests, CI, rapports de qualité et de l’anomalie étudiée</td><td>Qualité</td></tr>
+    </tbody>
+  </table>
+
+  <h2>2. Les branches main et develop</h2>
+  <p>Le modèle retenu est un <b>Git Flow simplifié</b>, adapté à une équipe Scrum qui livre en production à chaque fin de sprint (Bloc 2) mais doit pouvoir corriger la production entre deux sprints :</p>
+  <ul>
+    <li><code>main</code> ne contient que du code livré : chaque commit de <code>main</code> est une version étiquetée (<code>v1.0.0</code>) et déployée ;</li>
+    <li><code>develop</code> intègre en continu les fonctionnalités terminées du sprint ; elle est toujours déployable sur l’environnement de recette ;</li>
+    <li>chaque User Story ou correction vit dans une branche courte créée depuis <code>develop</code> et fusionnée sans avance rapide (<code>--no-ff</code>), ce qui garde la trace de la branche dans l’historique ;</li>
+    <li>une version passe par <code>release/X.Y.Z</code> (stabilisation, documentation), est fusionnée dans <code>main</code>, étiquetée, puis refusionnée dans <code>develop</code> ; un correctif urgent part de <code>main</code> dans <code>hotfix/*</code> et revient dans les deux.</li>
+  </ul>
+  <p>J’ai choisi ce modèle plutôt que le <i>trunk-based development</i> parce que deux contraintes du contexte imposent une branche de production stable distincte de l’intégration : les jalons réglementaires (analyse d’impact RGPD, comité go / no-go du Bloc 2) et la coexistence prolongée des applications historiques. Le trunk-based conviendrait à une équipe qui déploie plusieurs fois par jour derrière des feature flags, ce qui n’est pas le cas ici.</p>
+  <p>Les branches du dépôt, telles que Git les liste :</p>
+  <!--GEN:branches-->
+
+  <h2>3. La convention de nommage des branches</h2>
+  <p>La convention est documentée dans <code>CONTRIBUTING.md</code> et, surtout, <b>appliquée par un script</b> (<code>scripts/check_branch_name.py</code>) que la CI exécute à chaque push et que le hook pre-commit lance en local. Une convention seulement écrite finit toujours par être contournée.</p>
+  <pre class="code">&lt;type&gt;/&lt;ticket&gt;-&lt;description-courte&gt;
+
+type        feature | fix | hotfix | docs | ci | chore | test | refactor     (release : release/X.Y.Z)
+ticket      FUS-&lt;n&gt;  — identifiant du ticket du backlog (projet « Fusion »)
+description 2 à 6 mots en kebab-case, minuscules, sans accent
+
+^(main|develop)$
+|^(feature|fix|hotfix|docs|ci|chore|test|refactor)/FUS-[0-9]+-[a-z0-9]+(-[a-z0-9]+){1,5}$
+|^release/[0-9]+\.[0-9]+\.[0-9]+$</pre>
+  <table class="compact">
+    <thead><tr><th>Exemple</th><th>Résultat</th><th>Pourquoi</th></tr></thead>
+    <tbody>
+      <tr><td><code>feature/FUS-4-bus-kafka-extraction</code></td><td>conforme</td><td>type, ticket et description explicites</td></tr>
+      <tr><td><code>fix/FUS-9-paiements-comptes-deux-fois</code></td><td>conforme</td><td>la description dit le symptôme, pas la solution</td></tr>
+      <tr><td><code>release/1.0.0</code></td><td>conforme</td><td>version sémantique, sans ticket</td></tr>
+      <tr><td><code>feature/dashboard</code></td><td>refusée</td><td>ticket absent : impossible de relier le code à la User Story</td></tr>
+      <tr><td><code>Feature/FUS-4-Bus</code></td><td>refusée</td><td>majuscules (problèmes de casse entre Windows et Linux)</td></tr>
+      <tr><td><code>fix/FUS-12-correctif</code></td><td>refusée</td><td>description d’un seul mot, trop vague</td></tr>
+    </tbody>
+  </table>
+  <p>Le préfixe de ticket relie chaque branche au backlog Trello du Bloc 2 ; le type permet de filtrer l’historique (toutes les corrections : <code>git log --grep "^fix"</code>) et de déclencher des règles de CI différentes. Les messages de commit suivent la même logique avec les <i>Conventional Commits</i> en français (<code>feat(silver): …</code>, <code>fix(silver): …</code>, <code>Refs: FUS-9</code>).</p>
+
+  <h2>4. Règles de protection et de fusion</h2>
+  <ul>
+    <li>Pas de push direct sur <code>main</code> ni <code>develop</code> : fusion par pull request uniquement, une revue obligatoire pour <code>main</code>.</li>
+    <li>CI verte obligatoire avant fusion : convention de branche, ruff (lint et format), bandit, tests sur trois versions de Python avec un seuil de couverture de 85 %, jobs Spark, intégration Kafka, recette de l’image Docker.</li>
+    <li>Une correction commence par un test qui reproduit l’anomalie. L’historique de <code>fix/FUS-9</code> le montre : un commit de tests rouges, puis le commit du correctif.</li>
+  </ul>
+
+  <h2>5. L’historique réel du dépôt</h2>
+  <p>Le projet a été développé de façon itérative, une branche par incrément, chacune fusionnée dans <code>develop</code> une fois testée. Le graphe ci-dessous est la sortie brute de <code>git log --graph</code> :</p>
+  <!--GEN:git_graph-->
+</section>

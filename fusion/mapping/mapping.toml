@@ -1,0 +1,402 @@
+# Mapping des deux bases sources vers le modèle unifié (zone silver / entrepôt).
+#
+# Ce fichier est la SEULE définition du mapping : il est exécuté par le moteur local et par les jobs Spark,
+# exporté en CSV pour le composant tMap des jobs Talend (talend/tmap_mapping.csv) et reproduit en annexe du dossier.
+#
+#   cible    attribut du modèle unifié          type     type logique cible
+#   ab / ap  colonne source (« =VALEUR » : constante, absent : aucune colonne, la transformation reçoit None)
+#   t_ab / t_ap  chaîne de transformations appliquées dans l'ordre (voir fusion/mapping/transforms.py)
+#   regle    justification métier, reprise dans la documentation
+
+[meta]
+version = "1.1"
+modele = "MCD Bloc 3 — modèle unifié AbAssurance × AssurePlus"
+
+# ------------------------------------------------------------------------------------------- CLIENT
+[client]
+table_ab = "AB_CLIENT"
+table_ap = "AP_USERS"
+cle = "client_uid"
+topic = "client"
+
+[[client.champ]]
+cible = "client_uid"
+type = "VARCHAR(20)"
+ab = "AB_CLIENT_ID"
+ap = "AP_USER_ID"
+t_ab = ["cle_source"]
+t_ap = ["cle_source"]
+regle = "Identifiant préfixé par la source (AB-100001, AP-5001) : les deux bases numérotent à partir de petits entiers, une clé brute entrerait en collision."
+
+[[client.champ]]
+cible = "source_id"
+type = "VARCHAR(30)"
+ab = "AB_CLIENT_ID"
+ap = "AP_USER_ID"
+t_ab = ["texte"]
+t_ap = ["texte"]
+regle = "Identifiant d'origine conservé pour la traçabilité (lignage) et les retours vers la source."
+
+[[client.champ]]
+cible = "nom"
+type = "VARCHAR(100)"
+ab = "AB_NOM"
+ap = "AP_FULL_NAME"
+t_ab = ["majuscules"]
+t_ap = ["nom_depuis_nom_complet"]
+regle = "AP ne stocke qu'un nom complet : le nom est la partie en capitales, sinon le dernier mot (DQ04)."
+
+[[client.champ]]
+cible = "prenom"
+type = "VARCHAR(100)"
+ab = "AB_PRENOM"
+ap = "AP_FULL_NAME"
+t_ab = ["prenom"]
+t_ap = ["prenom_depuis_nom_complet"]
+regle = "Casse de titre, prénoms composés respectés (Jean-Pierre)."
+
+[[client.champ]]
+cible = "date_naissance"
+type = "DATE"
+ab = "AB_DATE_NAISSANCE"
+ap = "AP_BIRTH_DATE"
+t_ab = ["date_naissance_ab"]
+t_ap = ["date_naissance_ap"]
+regle = "AP_BIRTH_DATE est un VARCHAR(10) non contrôlé : formats JJ/MM/AAAA convertis (DQ01), sentinelles 1900-01-01 et valeurs impossibles mises à NULL (DQ02)."
+
+[[client.champ]]
+cible = "email"
+type = "VARCHAR(150)"
+ab = "AB_EMAIL"
+ap = "AP_MAIL_ADDRESS"
+t_ab = ["email"]
+t_ap = ["email"]
+regle = "Minuscules, espaces retirés, syntaxe vérifiée ; invalide → NULL (DQ03). Clé de rapprochement des doublons."
+
+[[client.champ]]
+cible = "code_postal"
+type = "VARCHAR(10)"
+ab = "AB_CODE_POSTAL"
+ap = "AP_ZIP_CODE"
+t_ab = ["code_postal"]
+t_ap = ["code_postal"]
+regle = "Majuscules et espaces normalisés (l-1009 → L-1009)."
+
+[[client.champ]]
+cible = "pays"
+type = "CHAR(2)"
+ab = "AB_CODE_POSTAL"
+ap = "AP_ZIP_CODE"
+t_ab = ["pays"]
+t_ap = ["pays"]
+regle = "Aucune des deux bases ne stocke le pays : il est déduit du format du code postal (FR, BE, LU, NL)."
+
+[[client.champ]]
+cible = "region"
+type = "VARCHAR(40)"
+ab = "AB_CODE_POSTAL"
+ap = "AP_ZIP_CODE"
+t_ab = ["region"]
+t_ap = ["region"]
+regle = "Région administrative déduite du département (clients français) ; alimente la répartition géographique."
+
+[[client.champ]]
+cible = "telephone"
+type = "VARCHAR(16)"
+ab = "AB_TELEPHONE"
+ap = "AP_PHONE_NUMBER"
+t_ab = ["telephone"]
+t_ap = ["telephone"]
+regle = "Format E.164 ; un numéro national prend l'indicatif du pays du client (déduit du code postal), non normalisable → NULL (DQ12)."
+
+[[client.champ]]
+cible = "adresse"
+type = "VARCHAR(255)"
+ab = "AB_ADRESSE"
+ap = "AP_STREET_ADDRESS"
+t_ab = ["adresse"]
+t_ap = ["adresse"]
+regle = "Majuscules sans accent, abréviations de voie développées (R → RUE, BD → BOULEVARD) pour comparer les adresses."
+
+[[client.champ]]
+cible = "date_creation"
+type = "TIMESTAMP"
+ab = "AB_DATE_CREATION"
+ap = "AP_CREATED_AT"
+t_ab = ["horodatage"]
+t_ap = ["horodatage"]
+regle = "TIMESTAMP Oracle (fractions de seconde tronquées) et DATETIME SQL Server ramenés au même format."
+
+[[client.champ]]
+cible = "statut"
+type = "VARCHAR(12)"
+ab = "AB_STATUT_CLIENT"
+ap = "AP_CUSTOMER_STATUS"
+t_ab = ["statut_client"]
+t_ap = ["statut_client"]
+regle = "Référentiel unifié ACTIF / INACTIF / RESILIE / PROSPECT ; active → ACTIF, churned → RESILIE, lead → PROSPECT (DQ05 si casse non conforme)."
+
+[[client.champ]]
+cible = "num_fiscal"
+type = "VARCHAR(30)"
+ab = "AB_NUM_FISCAL"
+t_ab = ["num_fiscal"]
+regle = "Propre à AbAssurance ; absent pour un client français → DQ11 (donnée sensible : jamais exposée au tableau de bord)."
+
+[[client.champ]]
+cible = "score_fidelite"
+type = "SMALLINT"
+ap = "AP_LOYALTY_SCORE"
+t_ap = ["entier"]
+regle = "Propre à AssurePlus (0–100) ; NULL pour les clients AbAssurance, non extrapolé."
+
+# ------------------------------------------------------------------------------------------- CONTRAT
+[contrat]
+table_ab = "AB_CONTRAT"
+table_ap = "AP_CONTRACTS"
+cle = "contrat_uid"
+topic = "contrat"
+
+[[contrat.champ]]
+cible = "contrat_uid"
+type = "VARCHAR(40)"
+ab = "AB_POLICY_NUMBER"
+ap = "AP_CONTRACT_REF"
+t_ab = ["cle_source"]
+t_ap = ["cle_source"]
+regle = "Numéro de police / référence de contrat préfixé par la source."
+
+[[contrat.champ]]
+cible = "source_id"
+type = "VARCHAR(30)"
+ab = "AB_POLICY_NUMBER"
+ap = "AP_CONTRACT_REF"
+t_ab = ["texte"]
+t_ap = ["texte"]
+regle = "Référence d'origine conservée."
+
+[[contrat.champ]]
+cible = "client_uid"
+type = "VARCHAR(20)"
+ab = "AB_CLIENT_ID"
+ap = "AP_USER_ID"
+t_ab = ["cle_source"]
+t_ap = ["cle_source"]
+regle = "Clé étrangère vers CLIENT_SOURCE ; non déclarée dans les sources, vérifiée après chargement (DQ06)."
+
+[[contrat.champ]]
+cible = "code_produit"
+type = "VARCHAR(30)"
+ab = "AB_TYPE_ASSURANCE"
+ap = "AP_PRODUCT_CODE"
+t_ab = ["produit"]
+t_ap = ["produit"]
+regle = "AB ne connaît que la branche (SANTE…), AP un code produit (AUTO_TIERS…) : les deux alimentent le référentiel PRODUIT."
+
+[[contrat.champ]]
+cible = "branche"
+type = "VARCHAR(12)"
+ab = "AB_TYPE_ASSURANCE"
+ap = "AP_PRODUCT_CODE"
+t_ab = ["branche"]
+t_ap = ["branche"]
+regle = "Regroupement commun AUTO / HABITATION / SANTE / PRO / ASSISTANCE, base des statistiques contrats et sinistres."
+
+[[contrat.champ]]
+cible = "date_debut"
+type = "DATE"
+ab = "AB_DATE_DEBUT"
+ap = "AP_START_DATE"
+t_ab = ["date"]
+t_ap = ["date"]
+regle = "DATE Oracle et DATETIME SQL Server ramenés à une DATE."
+
+[[contrat.champ]]
+cible = "date_fin"
+type = "DATE"
+ab = "AB_DATE_FIN"
+ap = "AP_END_DATE"
+t_ab = ["date"]
+t_ap = ["date"]
+regle = "Date d'échéance ou de résiliation."
+
+[[contrat.champ]]
+cible = "prime_annuelle"
+type = "DECIMAL(10,2)"
+ab = "AB_PRIME_ANNUELLE"
+ap = "AP_MONTHLY_PREMIUM"
+t_ab = ["montant", "prime_positive"]
+t_ap = ["montant", "mensuelle_vers_annuelle", "prime_positive"]
+regle = "Unité commune : prime ANNUELLE. AP stocke une prime mensuelle, multipliée par 12. Prime ≤ 0 → NULL (DQ07)."
+
+[[contrat.champ]]
+cible = "statut"
+type = "VARCHAR(12)"
+ab = "AB_STATUT_CONTRAT"
+ap = "AP_CONTRACT_STATE"
+t_ab = ["statut_contrat"]
+t_ap = ["statut_contrat"]
+regle = "Référentiel ACTIF / RESILIE / SUSPENDU / EN_ATTENTE ; Active, ACTIVE, active → ACTIF (DQ05)."
+
+[[contrat.champ]]
+cible = "canal"
+type = "VARCHAR(10)"
+ab = "=AGENCE"
+ap = "AP_BROKER_CODE"
+t_ap = ["canal_ap"]
+regle = "AB distribue en agence ; AP par courtier (code renseigné) ou en direct sur l'application mobile."
+
+[[contrat.champ]]
+cible = "code_distributeur"
+type = "VARCHAR(30)"
+ab = "AB_AGENCE_ID"
+ap = "AP_BROKER_CODE"
+t_ab = ["agence"]
+t_ap = ["distributeur_ap"]
+regle = "Entité DISTRIBUTEUR commune : agence AB (AG-007), courtier AP (BRK-012) ou APP-MOBILE."
+
+# ------------------------------------------------------------------------------------------- SINISTRE
+[sinistre]
+table_ab = "AB_SINISTRE"
+table_ap = "AP_CLAIMS"
+cle = "sinistre_uid"
+topic = "sinistre"
+
+[[sinistre.champ]]
+cible = "sinistre_uid"
+type = "VARCHAR(20)"
+ab = "AB_CLAIM_ID"
+ap = "AP_SINISTRE_NUM"
+t_ab = ["cle_source"]
+t_ap = ["cle_source"]
+regle = "Identifiant préfixé par la source."
+
+[[sinistre.champ]]
+cible = "source_id"
+type = "VARCHAR(30)"
+ab = "AB_CLAIM_ID"
+ap = "AP_SINISTRE_NUM"
+t_ab = ["texte"]
+t_ap = ["texte"]
+regle = "Identifiant d'origine conservé."
+
+[[sinistre.champ]]
+cible = "contrat_uid"
+type = "VARCHAR(40)"
+ab = "AB_POLICY_NUMBER"
+ap = "AP_CONTRACT_REF"
+t_ab = ["cle_source"]
+t_ap = ["cle_source"]
+regle = "Clé étrangère vers CONTRAT, vérifiée après chargement (DQ10)."
+
+[[sinistre.champ]]
+cible = "date_survenance"
+type = "TIMESTAMP"
+ab = "AB_DATE_SINISTRE"
+ap = "AP_INCIDENT_DATE"
+t_ab = ["date_sinistre"]
+t_ap = ["date_sinistre"]
+regle = "AP_INCIDENT_DATE est un VARCHAR(19) : trois formats constatés convertis (DQ08), valeurs impossibles → NULL (DQ09)."
+
+[[sinistre.champ]]
+cible = "montant_estime"
+type = "DECIMAL(12,2)"
+ab = "AB_MONTANT_ESTIME"
+ap = "AP_ESTIMATED_AMOUNT"
+t_ab = ["montant", "montant_sinistre"]
+t_ap = ["montant", "montant_sinistre"]
+regle = "Montant en euros ; négatif ou supérieur à 1 M€ → NULL et signalé (DQ17)."
+
+[[sinistre.champ]]
+cible = "statut"
+type = "VARCHAR(16)"
+ab = "AB_STATUT_SINISTRE"
+ap = "AP_CLAIM_STATUS"
+t_ab = ["statut_sinistre"]
+t_ap = ["statut_sinistre"]
+regle = "Référentiel OUVERT / EN_INSTRUCTION / CLOS_INDEMNISE / REFUSE (EN_COURS, UNDER_REVIEW → EN_INSTRUCTION)."
+
+[[sinistre.champ]]
+cible = "score_fraude"
+type = "DECIMAL(5,2)"
+ap = "AP_FRAUD_SCORE"
+t_ap = ["decimal"]
+regle = "Propre à AssurePlus ; NULL côté AB (pas de modèle de fraude), à généraliser avec le futur modèle IA."
+
+[[sinistre.champ]]
+cible = "description"
+type = "TEXT"
+ab = "AB_DESCRIPTION"
+ap = "AP_CLAIM_COMMENT"
+t_ab = ["texte"]
+t_ap = ["texte"]
+regle = "CLOB Oracle et NVARCHAR(MAX) SQL Server ; texte libre, non analysé à ce stade."
+
+# ------------------------------------------------------------------------------------------- PAIEMENT
+[paiement]
+table_ab = "AB_PAIEMENT"
+table_ap = "AP_PAYMENTS"
+cle = "paiement_uid"
+topic = "paiement"
+
+[[paiement.champ]]
+cible = "paiement_uid"
+type = "VARCHAR(40)"
+ab = "AB_PAYMENT_ID"
+ap = "AP_PAYMENT_REF"
+t_ab = ["cle_source"]
+t_ap = ["cle_source"]
+regle = "NUMBER Oracle ou GUID SQL Server, préfixé : clé d'idempotence du chargement (un paiement rejoué n'est compté qu'une fois)."
+
+[[paiement.champ]]
+cible = "source_id"
+type = "VARCHAR(40)"
+ab = "AB_PAYMENT_ID"
+ap = "AP_PAYMENT_REF"
+t_ab = ["texte"]
+t_ap = ["texte"]
+regle = "Identifiant d'origine conservé."
+
+[[paiement.champ]]
+cible = "contrat_uid"
+type = "VARCHAR(40)"
+ab = "AB_POLICY_NUMBER"
+ap = "AP_CONTRACT_REF"
+t_ab = ["cle_source"]
+t_ap = ["cle_source"]
+regle = "Clé étrangère vers CONTRAT, vérifiée après chargement (DQ14)."
+
+[[paiement.champ]]
+cible = "date_paiement"
+type = "TIMESTAMP"
+ab = "AB_DATE_PAIEMENT"
+ap = "AP_PAYMENT_DATETIME"
+t_ab = ["horodatage"]
+t_ap = ["horodatage"]
+regle = "DATE Oracle (minuit) et DATETIME SQL Server."
+
+[[paiement.champ]]
+cible = "montant"
+type = "DECIMAL(10,2)"
+ab = "AB_MONTANT"
+ap = "AP_AMOUNT_PAID"
+t_ab = ["montant"]
+t_ap = ["montant"]
+regle = "Montant encaissé en euros."
+
+[[paiement.champ]]
+cible = "mode"
+type = "VARCHAR(12)"
+ab = "AB_MODE_PAIEMENT"
+ap = "AP_PAYMENT_CHANNEL"
+t_ab = ["mode_paiement"]
+t_ap = ["mode_paiement"]
+regle = "Référentiel PRELEVEMENT / CARTE / CHEQUE / VIREMENT / PORTEFEUILLE (SEPA_DD → PRELEVEMENT, APPLE_PAY → PORTEFEUILLE)."
+
+[[paiement.champ]]
+cible = "statut"
+type = "VARCHAR(10)"
+ap = "AP_TRANSACTION_STATUS"
+t_ab = ["statut_paiement_ab"]
+t_ap = ["statut_paiement"]
+regle = "AB_PAIEMENT n'a pas de statut : un paiement présent est réputé encaissé (REUSSI, DQ13 tracée une fois)."

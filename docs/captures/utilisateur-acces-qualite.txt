@@ -1,0 +1,1 @@
+GET /api/gold/qualite (rôle utilisateur) -> HTTP 403

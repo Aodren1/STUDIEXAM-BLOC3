@@ -1,0 +1,14 @@
+.git
+.venv
+data
+docs
+reports
+tests
+jobs
+infra
+talend
+.env
+**/__pycache__
+.pytest_cache
+.ruff_cache
+htmlcov

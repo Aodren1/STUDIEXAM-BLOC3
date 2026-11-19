@@ -27,8 +27,11 @@ def current_branch() -> str:
     for var in ("GITHUB_HEAD_REF", "GITHUB_REF_NAME"):
         if os.environ.get(var):
             return os.environ[var]
-    out = subprocess.run(  # noqa: S603 - commande fixe, sans entrée utilisateur
-        ["git", "branch", "--show-current"], capture_output=True, text=True, check=True  # noqa: S607
+    out = subprocess.run(
+        ["git", "branch", "--show-current"],  # noqa: S607 - git résolu par le PATH de la CI
+        capture_output=True,
+        text=True,
+        check=True,
     )
     return out.stdout.strip()
 

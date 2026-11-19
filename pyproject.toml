@@ -30,7 +30,7 @@ fusion = ["mapping/*.toml", "sources/ddl/*.sql", "web/templates/*.html", "web/st
 
 # ---------------------------------------------------------------- qualité
 [tool.ruff]
-line-length = 110
+line-length = 120
 target-version = "py311"
 extend-exclude = ["docs/.tmp"]
 
@@ -42,14 +42,16 @@ ignore = [
   "PLR2004",  # constantes métier (seuils, tailles) documentées sur place
   "PLR0913",  # fonctions de transformation à nombreux paramètres nommés
   "RUF001", "RUF002", "RUF003",  # typographie française (espaces insécables, ×, ’)
+  "PLC0415",  # imports différés volontaires : dépendances optionnelles (kafka, pyspark, waitress) et démarrage léger
 ]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 12
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S105", "S106", "PLR0915", "PLC0415"]
-"jobs/**" = ["PLC0415"]
+"tests/**" = ["S101", "S105", "S106", "S311", "PLR0915", "PLR2004"]
+"jobs/**" = ["N812"]  # convention PySpark : functions as F, types as T
+"docs/**" = ["S603", "S607"]  # outillage du dossier : lance git et le navigateur local avec des arguments fixes
 "fusion/sources/generator.py" = ["S311"]  # données synthétiques : pas d'usage cryptographique du hasard
 
 [tool.ruff.lint.pylint]

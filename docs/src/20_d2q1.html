@@ -1,0 +1,41 @@
+<section class="dossier">
+  <h1>Dossier 2 — Mobilisation des outils</h1>
+  <div class="question">
+    <p><b>Question 1.</b> Présentez les bonnes pratiques à appliquer (surtout en termes de data cleaning).</p>
+    <p class="crit"><b>C3.2</b> Mobiliser les outils et approches technologiques en fonction de leur capacité à adresser les objectifs de la solution. <b>Critères :</b> maîtrise du cadre de programmation ; cohérence de la mise en œuvre au regard des objectifs ; respect des spécifications.</p>
+  </div>
+
+  <p>Une migration de données échoue rarement pour une raison technique : elle échoue parce que les chiffres consolidés ne sont pas crus par le métier. Les pratiques ci-dessous visent toutes cet objectif : un chiffre du tableau de bord doit pouvoir être expliqué ligne par ligne jusqu’à la source. Pour chacune, j’indique comment elle est appliquée dans la solution.</p>
+
+  <h2>1. Le cycle de nettoyage appliqué</h2>
+  <ol class="steps">
+    <li><b>Profiler avant de nettoyer.</b> On mesure d’abord, colonne par colonne, les formats réellement présents, les valeurs nulles, les cardinalités et les valeurs hors domaine. Sans profilage, on corrige ce qu’on imagine, pas ce qui existe. <i>Application</i> : le profilage des deux bases a mis en évidence trois formats de date dans <code>AP_INCIDENT_DATE</code>, des sentinelles <code>1900-01-01</code> dans <code>AP_BIRTH_DATE</code>, quatre casses différentes pour <code>AP_CONTRACT_STATE</code> et sept styles de saisie du téléphone. Le générateur de test reproduit ces défauts pour que le pipeline soit éprouvé sur des cas réalistes.</li>
+    <li><b>Standardiser vers un format canonique unique</b> : dates ISO 8601, téléphones E.164, e-mails en minuscules, codes postaux en majuscules, adresses sans accent avec abréviations de voie développées, statuts sur un référentiel fermé. <i>Application</i> : <code>fusion/cleaning.py</code>, fonctions pures testées une par une (Dossier 3).</li>
+    <li><b>Harmoniser les unités et les sémantiques, pas seulement les formats.</b> C’est l’erreur la plus coûteuse, car elle ne se voit pas : une prime mensuelle additionnée à une prime annuelle donne un total plausible mais faux. <i>Application</i> : <code>AP_MONTHLY_PREMIUM × 12</code>, statut de paiement implicite côté AB (règle DQ13), branche commune entre « type d’assurance » et « code produit ».</li>
+    <li><b>Valider par des règles explicites et nommées</b>, avec une gravité et une action prévue. Une règle sans nom ne peut être ni discutée avec le métier ni suivie dans le temps. <i>Application</i> : catalogue DQ01 à DQ17, repris des Blocs 1 et 2 et complété.</li>
+    <li><b>Ne jamais supprimer en silence.</b> Une valeur invalide est corrigée ou mise à NULL avec une trace ; une ligne orpheline est isolée et mise en quarantaine avec son motif ; un message illisible part dans une file dédiée (<i>dead letter queue</i>). La donnée d’origine reste disponible en zone bronze. <i>Application</i> : tables <code>anomalie_qualite</code> et <code>quarantaine</code>, topic <code>dlq.silver</code>.</li>
+    <li><b>Dédoublonner avec une méthode mesurée.</b> Blocage pour éviter le produit cartésien, score pondéré, seuil calibré sur une vérité terrain, et deux niveaux de décision. On fusionne automatiquement seulement ce qui est certain ; le reste passe en validation métier. Fusionner à tort deux assurés distincts est bien plus grave qu’en laisser deux non fusionnés. <i>Application</i> : 100 % de précision sur les fusions automatiques, et un seuil calibré (Dossier 3).</li>
+    <li><b>Réconcilier systématiquement</b> : le nombre de lignes et les sommes de contrôle (montants) doivent correspondre entre la source et la cible. Un écart <b>bloque la publication</b> au lieu d’alimenter un tableau de bord faux. <i>Application</i> : c’est ce contrôle qui a détecté l’anomalie du Dossier 3.</li>
+    <li><b>Rendre le traitement idempotent et rejouable.</b> Rejouer un traitement sur les mêmes données doit donner le même résultat : c’est ce qui permet de relancer une nuit en échec sans risque. <i>Application</i> : silver indexé par identifiant (upsert), écriture du lac en mode écrasement de partition, bascule atomique de l’entrepôt.</li>
+    <li><b>Tracer le lignage.</b> Chaque ligne cible garde sa source et son identifiant d’origine ; chaque exécution produit un rapport (volumes, durées, écarts). <i>Application</i> : colonnes <code>code_source</code> / <code>source_id</code>, rapport d’exécution, onglet « Qualité et exécution ».</li>
+    <li><b>Protéger les données personnelles dès la conception (RGPD)</b> : minimisation (le tableau de bord ne reçoit que des agrégats), séparation des rôles (seul l’administrateur voit les paires nominatives), aucune donnée réelle hors production (données de test synthétiques), numéro fiscal jamais exposé.</li>
+  </ol>
+
+  <h2>2. Ce que ces règles ont trouvé dans les deux bases</h2>
+  <p>Résultat mesuré sur le jeu de test (8 500 comptes clients, 13 186 contrats, 21 343 sinistres, 149 102 paiements). Chaque ligne du tableau est le nombre de déclenchements de la règle, par source :</p>
+  <!--GEN:regles_qualite-->
+  <p>Trois enseignements pour la migration réelle. D’abord, les défauts ne sont pas répartis au hasard. Les formats de date et les noms complets sont des problèmes AssurePlus (saisie libre dans l’application mobile) ; les numéros fiscaux manquants et les contrats orphelins viennent de l’historique Oracle d’AbAssurance. Ensuite, la cascade des orphelins compte : 39 contrats sans client existant isolent avec eux plusieurs centaines de paiements. Les compter dans les encaissements fausserait les finances. Enfin, aucune règle critique ne bloque l’alimentation : les lignes concernées sont isolées et chiffrées, c’est au métier de décider de leur sort.</p>
+
+  <h2>3. Bonnes pratiques de développement associées</h2>
+  <table class="compact">
+    <thead><tr><th>Pratique</th><th>Pourquoi</th><th>Mise en œuvre</th></tr></thead>
+    <tbody>
+      <tr><td>Règles de nettoyage en fonctions pures</td><td>Testables isolément, réutilisables par plusieurs moteurs</td><td><code>cleaning.py</code>, appelé à l’identique par Python et par Spark</td></tr>
+      <tr><td>Mapping déclaratif, unique</td><td>Une seule définition pour le code, Talend et la documentation : pas de divergence possible</td><td><code>mapping.toml</code>, validé au chargement</td></tr>
+      <tr><td>Configuration par l’environnement</td><td>Même code en local, en recette et en production (12-factor)</td><td><code>fusion/config.py</code> : bus, lac, date de référence</td></tr>
+      <tr><td>Secrets hors du dépôt</td><td>Un dépôt public ne doit contenir aucun mot de passe réel</td><td><code>.env</code> non versionné, mots de passe hachés (scrypt)</td></tr>
+      <tr><td>Données de test synthétiques et déterministes</td><td>Reproductibilité des tests, aucune donnée personnelle réelle</td><td>Générateur à graine fixe : deux exécutions produisent les mêmes octets</td></tr>
+      <tr><td>Identifiants SQL en liste blanche</td><td>Défense en profondeur contre l’injection</td><td><code>fusion/sqlsafe.py</code> (Dossier 3)</td></tr>
+    </tbody>
+  </table>
+</section>

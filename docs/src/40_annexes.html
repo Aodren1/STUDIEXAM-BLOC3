@@ -1,0 +1,40 @@
+<section class="dossier">
+  <h1>Annexes</h1>
+  <h2>A. Mapping complet des deux bases vers le modèle unifié</h2>
+  <p>Généré depuis <code>fusion/mapping/mapping.toml</code>, la définition exécutée par le pipeline. Les transformations sont listées dans leur ordre d’application.</p>
+  <!--GEN:mapping-->
+
+  <h2 style="break-before: page">B. Matrice des doublons par couple de sources</h2>
+  <!--GEN:matrice-->
+  <p class="small">La diagonale compte les doublons internes à une base : ressaisie en agence pour AbAssurance, double inscription sur l’application mobile pour AssurePlus. La case AbAssurance × AssurePlus mesure le recouvrement des deux portefeuilles, c’est-à-dire le potentiel commercial de la fusion.</p>
+  <h3>Calibrage du seuil de fusion automatique</h3>
+  <!--GEN:calibrage-->
+
+  <h2>C. Exploitation</h2>
+  <table class="compact">
+    <thead><tr><th>Action</th><th>Commande</th></tr></thead>
+    <tbody>
+      <tr><td>Installer (développement)</td><td><code>python -m venv .venv</code> puis <code>pip install -e ".[dev]"</code></td></tr>
+      <tr><td>Générer les sources de test</td><td><code>python -m fusion seed</code></td></tr>
+      <tr><td>Exécuter le pipeline (complet / incrémental)</td><td><code>python -m fusion run --complet</code> / <code>python -m fusion run</code></td></tr>
+      <tr><td>Extraction seule (tâche Airflow)</td><td><code>python -m fusion extract</code></td></tr>
+      <tr><td>Exporter le mapping pour Talend</td><td><code>python -m fusion mapping talend/tmap_mapping.csv</code></td></tr>
+      <tr><td>Démarrer le tableau de bord</td><td><code>python -m fusion serve --port 8000</code></td></tr>
+      <tr><td>Tests et couverture</td><td><code>pytest --cov</code> ; <code>node --test tests/js/format.test.mjs</code></td></tr>
+      <tr><td>Qualité</td><td><code>ruff check .</code> ; <code>ruff format --check .</code> ; <code>bandit -c pyproject.toml -r fusion</code></td></tr>
+      <tr><td>Déploiement (démonstration)</td><td><code>docker compose up -d --build</code> (port 8096)</td></tr>
+      <tr><td>Plateforme Big Data</td><td><code>docker compose -f infra/docker-compose.bigdata.yml up -d</code>, puis les profils <code>jobs</code> et <code>cdc</code></td></tr>
+      <tr><td>Régénérer ce dossier</td><td><code>node docs/captures.mjs</code> puis <code>python docs/build.py</code></td></tr>
+    </tbody>
+  </table>
+  <h3>API du tableau de bord</h3>
+  <table class="compact">
+    <thead><tr><th>Route</th><th>Rôle requis</th><th>Réponse</th></tr></thead>
+    <tbody>
+      <tr><td><code>GET /api/sante</code></td><td>aucun</td><td>État du service et présence de la zone gold (sonde de supervision)</td></tr>
+      <tr><td><code>GET /api/gold/&lt;rubrique&gt;</code></td><td>utilisateur</td><td>Agrégats d’une rubrique ; <code>qualite</code> réservée à l’administrateur (403 sinon)</td></tr>
+      <tr><td><code>GET /api/doublons/paires</code></td><td>administrateur</td><td>File des paires à valider (données personnelles)</td></tr>
+      <tr><td><code>POST /api/pipeline</code></td><td>administrateur + jeton CSRF</td><td>Relance incrémentale en arrière-plan (409 si une exécution est en cours)</td></tr>
+    </tbody>
+  </table>
+</section>

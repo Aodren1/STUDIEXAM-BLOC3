@@ -1,0 +1,70 @@
+<section style="break-before: page">
+  <div class="question">
+    <p><b>Question 2.</b> Proposez un framework adapté (de préférence dans Python et des outils de data mapping et data migrations).</p>
+    <p class="crit"><b>C3.2</b> — <b>Critères :</b> maîtrise du cadre de programmation ; cohérence de l’approche technologique au regard des objectifs.</p>
+  </div>
+
+  <h2>1. Les besoins qui orientent le choix</h2>
+  <ul>
+    <li>Traiter des centaines de téraoctets (Oracle) et 17 millions de clients : le moteur doit être <b>distribué</b>.</li>
+    <li>S’intégrer à la chaîne imposée par la direction technique : Talend, Kafka, Hadoop, Spark.</li>
+    <li>Décrire le mapping de deux schémas hétérogènes de façon <b>lisible par le métier</b> et versionnée.</li>
+    <li>Migrer <b>sans arrêter</b> les applications historiques : coexistence, synchronisation continue, bascule progressive.</li>
+    <li>Préparer l’IA (énoncé) : l’écosystème doit être celui de la data science.</li>
+  </ul>
+
+  <h2>2. Comparaison des frameworks Python de traitement</h2>
+  <table class="compact">
+    <thead><tr><th>Framework</th><th>Points forts</th><th>Limites pour ce projet</th><th>Verdict</th></tr></thead>
+    <tbody>
+      <tr><td><b>PySpark</b> (Apache Spark 3.5)</td><td>Distribué, natif sur Hadoop / YARN, lit Kafka, Oracle et SQL Server (JDBC), écrit Parquet sur HDFS, Spark SQL et MLlib</td><td>JVM à installer, démarrage lent, mise au point plus lourde</td><td><b>retenu</b> pour les traitements de production</td></tr>
+      <tr><td>pandas</td><td>Le standard de l’analyse, très riche</td><td>Mono-machine, tout en mémoire : inadapté à des centaines de To</td><td>exploration ponctuelle</td></tr>
+      <tr><td>Polars</td><td>Très rapide, moteur paresseux</td><td>Mono-machine ; pas d’intégration HDFS / YARN</td><td>non retenu</td></tr>
+      <tr><td>Dask</td><td>API proche de pandas, distribué</td><td>Écosystème Hadoop moins mature que Spark, absent de la chaîne imposée</td><td>non retenu</td></tr>
+      <tr><td>Python standard (bibliothèque <code>fusion</code>)</td><td>Aucune dépendance, démarrage instantané, testable partout</td><td>Mono-processus</td><td><b>retenu</b> pour les règles et les petits volumes</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3. Outils de data mapping, de validation et de migration</h2>
+  <table class="compact">
+    <thead><tr><th>Besoin</th><th>Outil proposé</th><th>Alternatives examinées</th><th>Raison du choix</th></tr></thead>
+    <tbody>
+      <tr><td>Mapping source → cible</td><td><b>Mapping déclaratif TOML</b> exécuté par <code>fusion.mapping</code>, exporté pour le tMap de Talend</td><td>tMap seul, dbt, code Spark écrit à la main</td><td>Une seule définition, lisible par le métier, validée au chargement, exécutée par les deux moteurs</td></tr>
+      <tr><td>Extraction et intégration</td><td><b>Talend</b> (jobs J01 à J10)</td><td>Apache NiFi, Airbyte</td><td>Imposé par la direction technique, connecteurs Oracle / SQL Server / Kafka natifs</td></tr>
+      <tr><td>Synchronisation continue (CDC)</td><td><b>Kafka Connect + Debezium</b> (LogMiner Oracle, CDC SQL Server)</td><td>Extraction par filigrane seule</td><td>Capte les mises à jour et suppressions sans toucher aux applications : indispensable à la coexistence</td></tr>
+      <tr><td>Validation des données</td><td>Catalogue de règles DQ en code ; <b>Great Expectations</b> ou <b>Pandera</b> en production</td><td>Contrôles SQL ad hoc</td><td>Règles nommées, versionnées, rapportées ; les deux bibliothèques ont des intégrations Spark</td></tr>
+      <tr><td>Migration du schéma cible</td><td><b>SQLAlchemy + Alembic</b> (scripts de migration versionnés)</td><td>Scripts SQL manuels, Flyway</td><td>Évolution du schéma tracée et réversible, multi-SGBD (Oracle, SQL Server, PostgreSQL)</td></tr>
+      <tr><td>Orchestration</td><td><b>Apache Airflow</b> (DAG <code>infra/airflow/dag_fusion.py</code>)</td><td>Dagster, cron</td><td>Reprise sur erreur, dépendances, historique d’exécution, intégrations Spark et Talend</td></tr>
+      <tr><td>Restitution</td><td>Flask + Chart.js (validation) ; Apache Superset (exploration)</td><td>Dash, Power BI</td><td>Contrôle fin de la sécurité et des rôles ; Superset se branche sur le Thrift Server de Spark</td></tr>
+    </tbody>
+  </table>
+
+  <h2>4. Le framework retenu : un noyau Python partagé par deux moteurs</h2>
+  <p>Le choix central est de <b>ne pas écrire les règles deux fois</b>. Le paquet <code>fusion</code> contient tout ce qui relève du métier : nettoyage, mapping, règles de qualité, score de doublon. Deux moteurs l’exécutent :</p>
+  <ul>
+    <li>le <b>moteur local</b> (Python standard) pour le poste du développeur, les tests et le serveur de démonstration. Le pipeline complet tourne en 15 secondes sur le jeu de test ;</li>
+    <li>les <b>jobs PySpark</b> (<code>jobs/spark</code>) pour le cluster. Ils distribuent les mêmes fonctions sur les partitions (<code>mapPartitions</code>, UDF) et n’ajoutent que ce que Spark fait mieux : lecture de Kafka, jointures distribuées, agrégats SQL, écriture Parquet sur HDFS.</li>
+  </ul>
+  <p>Un test de la CI exécute les deux moteurs sur les mêmes événements et compare les résultats : mêmes volumes par table, mêmes orphelins, mêmes anomalies, mêmes contrats actifs par branche, mêmes paires de doublons. Si quelqu’un modifie une règle d’un côté seulement, la CI échoue.</p>
+  <h3>Le mapping comme code</h3>
+  <p>Extrait de <code>fusion/mapping/mapping.toml</code>. Chaque attribut cible déclare sa colonne dans chaque source, la chaîne de transformations et la règle métier qui la justifie :</p>
+  <pre class="code">[[contrat.champ]]
+cible = "prime_annuelle"
+type  = "DECIMAL(10,2)"
+ab    = "AB_PRIME_ANNUELLE"
+ap    = "AP_MONTHLY_PREMIUM"
+t_ab  = ["montant", "prime_positive"]
+t_ap  = ["montant", "mensuelle_vers_annuelle", "prime_positive"]
+regle = "Unité commune : prime ANNUELLE. AP stocke une prime mensuelle, multipliée par 12. Prime ≤ 0 → NULL (DQ07)."</pre>
+  <p>Au chargement, le moteur vérifie que chaque colonne existe dans le schéma source, que chaque transformation est connue et que la clé est mappée. Une faute de frappe est donc détectée avant tout traitement, pas au milieu de la nuit. Le même fichier produit <code>talend/tmap_mapping.csv</code> (<code>python -m fusion mapping</code>) pour le composant tMap des jobs Talend, et l’Annexe A de ce dossier.</p>
+
+  <h2>5. Stratégie de migration</h2>
+  <p>La migration suit une logique de <b>coexistence puis de bascule progressive</b> : les applications historiques restent en service pendant toute la transition, comme l’exige l’énoncé.</p>
+  <ol class="steps">
+    <li><b>Reprise initiale</b> : extraction complète par lots (Talend ou <code>fusion extract</code>), chargement des zones bronze et silver, contrôle de réconciliation.</li>
+    <li><b>Synchronisation continue</b> : Debezium publie chaque modification sur les mêmes topics <code>src.*</code>. Le traitement silver étant idempotent, rejouer un message n’a aucun effet de bord.</li>
+    <li><b>Double run</b> : pendant plusieurs clôtures mensuelles, les reportings sont calculés par l’ancien et le nouveau système, puis comparés.</li>
+    <li><b>Bascule par domaine</b> (reporting, puis analyse des sinistres, puis relation client), chacune réversible tant que les bases historiques sont alimentées.</li>
+    <li><b>Décommissionnement</b> des flux historiques, les bases restant consultables pour les obligations réglementaires de conservation.</li>
+  </ol>
+</section>
