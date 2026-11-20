@@ -120,8 +120,12 @@ jobs:
     name: SonarCloud
     needs: [qualite, tests]
     runs-on: ubuntu-latest
-    env:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    # Analyse sans secret : GitHub émet un jeton OIDC que sonarqube-auth-action échange contre un
+    # jeton SonarCloud éphémère (30 min). Les pull requests venant d'un fork n'y ont pas droit.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }  # historique complet : attribution des nouvelles lignes
@@ -129,12 +133,10 @@ jobs:
         with: { name: couverture }
       - uses: actions/download-artifact@v4
         with: { name: rapports-qualite }
+      - name: Authentification SonarCloud (OIDC, sans secret)
+        uses: SonarSource/sonarqube-auth-action@b372e2c2930aadfcc4f4399446da1e12772709ad  # v1.2
       - name: Analyse SonarCloud
-        if: env.SONAR_TOKEN != ''
-        uses: SonarSource/sonarqube-scan-action@v5
-      - name: Jeton absent
-        if: env.SONAR_TOKEN == ''
-        run: echo "::notice::SONAR_TOKEN non défini dans les secrets du dépôt, analyse SonarCloud ignorée"
+        uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4  # v8.5.0
 
   image:
     name: Recette de l'image Docker
