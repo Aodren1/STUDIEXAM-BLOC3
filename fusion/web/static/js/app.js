@@ -559,7 +559,11 @@
   };
 
   // ------------------------------------------------------------------ navigation
-  async function show(section) {
+  async function show(demande) {
+    // Seule une rubrique connue est chargée : la clé utilisée dans l'URL de l'API vient de RENDER,
+    // jamais de l'appelant (le #… de l'adresse est une donnée que l'utilisateur peut modifier).
+    const section = Object.keys(RENDER).find((cle) => cle === demande);
+    if (!section) return;
     state.section = section;
     document.querySelectorAll('.tabs button').forEach((b) => {
       if (b.dataset.section === section) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
@@ -569,7 +573,7 @@
     state.charts = [];
     if (!state.cache[section]) {
       main.replaceChildren(h('p', { class: 'loading', text: 'Chargement…' }));
-      try { state.cache[section] = await api(`/api/gold/${encodeURIComponent(section)}`); } catch (e) {
+      try { state.cache[section] = await api(`/api/gold/${section}`); } catch (e) {
         main.replaceChildren(h('p', { class: 'empty', text: `Impossible de charger la rubrique : ${e.message}` }));
         return;
       }
