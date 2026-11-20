@@ -92,7 +92,10 @@ class Gen:
                 "Dépôt Git public (code, tests, CI, dossier)",
                 f'<a href="{LINKS["GITHUB_URL"]}">{LINKS["GITHUB_URL"]}</a>',
             ],
-            ["Branche de production", "<code>main</code> — version taguée <code>v1.0.0</code>"],
+            [
+                "Branche de production",
+                "<code>main</code> — dernière version taguée <code>v1.0.1</code> (correctif après <code>v1.0.0</code>)",
+            ],
             ["Branche d’intégration", "<code>develop</code>"],
             [
                 "Convention de nommage des branches",
@@ -106,8 +109,10 @@ class Gen:
             ],
             ["Intégration continue (GitHub Actions)", f'<a href="{LINKS["CI_URL"]}">{LINKS["CI_URL"]}</a>'],
             [
-                "Analyse SonarCloud",
-                f'<a href="{LINKS["SONAR_URL"]}">sonarcloud.io — projet Aodren1_STUDIEXAM-BLOC3</a>',
+                "Contrôle qualité du code",
+                "ruff et bandit, bloquants dans la CI (job <code>qualite</code>, rapports en artefact). "
+                "SonarCloud configuré (<code>sonar-project.properties</code>, job <code>sonarcloud</code>), "
+                "analyse activée dès l’ajout du jeton <code>SONAR_TOKEN</code> (dossier 3, question 1)",
             ],
             ["Couverture des tests", "rapport HTML : artefact « couverture » de chaque exécution de la CI"],
             ["Lancer en local", "<code>docker compose up -d --build</code> puis http://localhost:8096"],

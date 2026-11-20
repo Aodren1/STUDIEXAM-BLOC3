@@ -11,12 +11,22 @@ Sert au développement, aux tests et au serveur de démonstration ; la cible uti
 from __future__ import annotations
 
 import json
+import re
 import zlib
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 from fusion.bus import Message
+
+# Noms de topic et de groupe : ils deviennent des noms de fichiers, donc ni séparateur ni « .. ».
+_NOM = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
+
+
+def _nom_valide(nom: str, quoi: str) -> str:
+    if not isinstance(nom, str) or not _NOM.fullmatch(nom) or ".." in nom:
+        raise ValueError(f"{quoi} invalide : {nom!r}")
+    return nom
 
 
 class FileBus:
@@ -33,7 +43,7 @@ class FileBus:
         return zlib.crc32((key or "").encode("utf-8")) % self.partitions
 
     def _file(self, topic: str, partition: int) -> Path:
-        return self.root / topic / f"p{partition}.jsonl"
+        return self.root / _nom_valide(topic, "topic") / f"p{int(partition)}.jsonl"
 
     def produce(self, topic: str, key: str | None, value: dict[str, Any]) -> None:
         p = self.partition_for(key)
@@ -61,11 +71,20 @@ class FileBus:
 
     # ------------------------------------------------------------------ consommation
     def _offsets_file(self, group: str) -> Path:
-        return self.root / "_offsets" / f"{group}.json"
+        return self.root / "_offsets" / f"{_nom_valide(group, 'groupe')}.json"
 
     def _load_offsets(self, group: str) -> dict[str, dict[str, int]]:
         f = self._offsets_file(group)
-        return json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+        if not f.exists():
+            return {}
+        brut = json.loads(f.read_text(encoding="utf-8"))
+        # Le fichier est relu puis réécrit à chaque commit : on n'en garde que des noms de topic
+        # valides et des entiers, un fichier altéré ne peut donc rien injecter.
+        return {
+            topic: {str(int(p)): int(o) for p, o in parts.items()}
+            for topic, parts in brut.items()
+            if isinstance(parts, dict) and _NOM.fullmatch(topic) and ".." not in topic
+        }
 
     def committed(self, topic: str, group: str) -> dict[int, int]:
         return {int(p): o for p, o in self._load_offsets(group).get(topic, {}).items()}

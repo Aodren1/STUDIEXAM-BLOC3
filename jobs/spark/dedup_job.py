@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 
+from pyspark import SparkConf
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql import types as T
@@ -57,10 +58,10 @@ def candidate_pairs(clients: DataFrame) -> DataFrame:
         ).alias("cle"),
     )
     sizes = keys.groupBy("cle").count().filter(F.col("count") <= MAX_BLOC)
-    keys = keys.join(sizes.select("cle"), "cle")
+    keys = keys.join(sizes.select("cle"), "cle", how="inner")
     a, b = keys.alias("a"), keys.alias("b")
     return (
-        a.join(b, (F.col("a.cle") == F.col("b.cle")) & (F.col("a.client_uid") < F.col("b.client_uid")))
+        a.join(b, (F.col("a.cle") == F.col("b.cle")) & (F.col("a.client_uid") < F.col("b.client_uid")), how="inner")
         .select(F.col("a.client_uid").alias("uid_a"), F.col("b.client_uid").alias("uid_b"))
         .distinct()
     )
@@ -70,8 +71,14 @@ def score_pairs(spark: SparkSession, clients: DataFrame, pairs: DataFrame) -> Da
     cols = ["client_uid", "nom", "prenom", "date_naissance", "email", "telephone", "adresse", "code_postal"]
     small = clients.select(*cols)
     joined = pairs.join(
-        small.select(*[F.col(x).alias(f"a_{x}") for x in cols]), F.col("uid_a") == F.col("a_client_uid")
-    ).join(small.select(*[F.col(x).alias(f"b_{x}") for x in cols]), F.col("uid_b") == F.col("b_client_uid"))
+        small.select(*[F.col(x).alias(f"a_{x}") for x in cols]),
+        F.col("uid_a") == F.col("a_client_uid"),
+        how="inner",
+    ).join(
+        small.select(*[F.col(x).alias(f"b_{x}") for x in cols]),
+        F.col("uid_b") == F.col("b_client_uid"),
+        how="inner",
+    )
 
     def score_partition(rows):
         from fusion.cleaning import name_key
@@ -94,10 +101,9 @@ def main(argv: list[str] | None = None) -> dict[str, int]:
     ap.add_argument("--lake", required=True)
     ap.add_argument("--master", default=None)
     args = ap.parse_args(argv)
-    builder = SparkSession.builder.appName("fusion-doublons")
-    if args.master:
-        builder = builder.master(args.master)
-    spark = builder.getOrCreate()
+    # maître : --master du script, sinon celui de spark-submit, sinon local
+    master = args.master or SparkConf().get("spark.master", "local[*]")
+    spark = SparkSession.builder.appName("fusion-doublons").master(master).getOrCreate()
     lake = args.lake.rstrip("/")
     clients = spark.read.parquet(f"{lake}/silver/client")
     paires = score_pairs(spark, clients, candidate_pairs(clients)).cache()

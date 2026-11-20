@@ -24,7 +24,8 @@ from fusion.sources.generator import AP_DB
 # ---------------------------------------------------------------------------- bus
 def test_partitionnement_stable_par_cle(tmp_path):
     bus = FileBus(tmp_path, partitions=3)
-    assert bus.partition_for("AB-1") == bus.partition_for("AB-1")
+    autre = FileBus(tmp_path, partitions=3)  # même clé, même partition, d'une instance à l'autre
+    assert bus.partition_for("AB-1") == autre.partition_for("AB-1")
     assert {bus.partition_for(f"AB-{i}") for i in range(50)} == {0, 1, 2}
 
 
@@ -200,3 +201,23 @@ def test_extraction_complete_puis_incrementale(small_sources, tmp_path):
 def test_enveloppe():
     env = envelope("AB", "AB_CLIENT", "AB-1", {"AB_CLIENT_ID": 1})
     assert env["source"]["db"] == "ORACLE_ABASSURANCE" and env["op"] == "r" and env["after"]["AB_CLIENT_ID"] == 1
+
+
+def test_noms_de_topic_et_de_groupe_refuses(tmp_path):
+    bus = FileBus(tmp_path)
+    for nom in ("../evil", "a/b", "..", "", "x" * 200):
+        with pytest.raises(ValueError):
+            bus.committed("src.ab.client", nom)
+        with pytest.raises(ValueError):
+            bus.produce(nom, "k", {"v": 1})
+
+
+def test_offsets_alteres_assainis_a_la_relecture(tmp_path):
+    bus = FileBus(tmp_path)
+    f = tmp_path / "_offsets" / "g.json"
+    f.parent.mkdir(parents=True)
+    brut = {"src.ab.client": {"0": "3", "1": 2}, "../../hors": {"0": 1}, "src.ap.users": "x"}
+    f.write_text(json.dumps(brut), encoding="utf-8")
+    assert bus.committed("src.ab.client", "g") == {0: 3, 1: 2}
+    assert bus.committed("../../hors", "g") == {}
+    assert bus.committed("src.ap.users", "g") == {}
