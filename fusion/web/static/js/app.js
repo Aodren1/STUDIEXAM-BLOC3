@@ -579,9 +579,11 @@
   }
 
   /** Affiche une rubrique ; une erreur de rendu inattendue est montrée au lieu d'être perdue. */
-  const go = (section) => show(section).catch((e) => {
-    main.replaceChildren(h('p', { class: 'empty', text: `Affichage impossible : ${e.message}` }));
-  });
+  const go = (section) => {
+    show(section).catch((e) => {
+      main.replaceChildren(h('p', { class: 'empty', text: `Affichage impossible : ${e.message}` }));
+    });
+  };
   document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => go(b.dataset.section)));
   document.querySelectorAll('.segmented button').forEach((b) => b.addEventListener('click', () => {
     state.source = b.dataset.source;

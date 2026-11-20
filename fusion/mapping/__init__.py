@@ -148,10 +148,13 @@ class MappingSpec:
         (répertoire courant par défaut) : un chemin reçu en argument ne peut pas écrire ailleurs."""
         racine = os.path.realpath(base if base is not None else os.getcwd())
         cible = os.path.realpath(os.path.join(racine, path))
-        if os.path.commonpath([racine, cible]) != racine or not cible.lower().endswith(".csv"):
-            raise ValueError(f"export refusé : {path} doit être un fichier .csv sous {racine}")
+        if os.path.commonpath((racine, cible)) != racine:
+            raise ValueError(f"export refusé : {path} sort du répertoire {racine}")
+        if not cible.lower().endswith(".csv"):
+            raise ValueError(f"export refusé : {path} n'est pas un fichier .csv")
         rows = self.rows()
-        with open(cible, "w", newline="", encoding="utf-8") as fh:
+        # chemin confiné juste au-dessus (realpath + commonpath, testé) ; Sonar ne reconnaît pas ce contrôle
+        with open(cible, "w", newline="", encoding="utf-8") as fh:  # NOSONAR python:S8707
             w = csv.DictWriter(fh, fieldnames=list(rows[0]), delimiter=";")
             w.writeheader()
             w.writerows(rows)
