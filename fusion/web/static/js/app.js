@@ -33,7 +33,7 @@
   /** Encre lisible sur un fond donné, d'après sa luminance relative (WCAG), quel que soit le thème. */
   const inkOn = (hex) => {
     const c = hex.replace('#', '').match(/../g).map((x) => {
-      const v = parseInt(x, 16) / 255;
+      const v = Number.parseInt(x, 16) / 255;
       return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
     });
     return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] > 0.25 ? '#1f1c17' : '#fffdf9';
@@ -491,7 +491,7 @@
   function pairsPanel() {
     const box = h('div', { class: 'table-wrap' }, h('p', { class: 'loading', text: 'Chargement des paires…' }));
     const load = async (niveau) => {
-      const data = await api(`/api/doublons/paires${niveau ? `?niveau=${niveau}` : ''}`);
+      const data = await api(`/api/doublons/paires${niveau ? `?niveau=${encodeURIComponent(niveau)}` : ''}`);
       box.replaceChildren(dataTable({
         head: ['Score', 'Niveau', 'Compte A', 'Compte B', 'Naissance A / B', 'Code postal A / B', 'Critères concordants'],
         numeric: [0],
@@ -519,14 +519,15 @@
       btn.disabled = true; status.textContent = 'Exécution en cours…';
       try {
         await api('/api/pipeline', { method: 'POST', headers: { 'X-CSRF-Token': CSRF } });
+        const fail = (e) => { status.textContent = `Échec : ${e.message}`; btn.disabled = false; };
         const poll = async () => {
           const s = await api('/api/pipeline');
-          if (s.etat === 'en_cours') { setTimeout(poll, 1500); return; }
+          if (s.etat === 'en_cours') { setTimeout(() => poll().catch(fail), 1500); return; }
           status.textContent = s.etat === 'termine' ? `Terminé : ${s.message}` : `Échec : ${s.message}`;
           btn.disabled = false; state.cache = {};
-          if (s.etat === 'termine') setTimeout(() => show(state.section), 600);
+          if (s.etat === 'termine') setTimeout(() => go(state.section), 600);
         };
-        poll();
+        poll().catch(fail);
       } catch (e) { status.textContent = `Échec : ${e.message}`; btn.disabled = false; }
     } }, 'Relancer le pipeline (incrémental)');
     const steps = exe.etapes || [];
@@ -568,7 +569,7 @@
     state.charts = [];
     if (!state.cache[section]) {
       main.replaceChildren(h('p', { class: 'loading', text: 'Chargement…' }));
-      try { state.cache[section] = await api(`/api/gold/${section}`); } catch (e) {
+      try { state.cache[section] = await api(`/api/gold/${encodeURIComponent(section)}`); } catch (e) {
         main.replaceChildren(h('p', { class: 'empty', text: `Impossible de charger la rubrique : ${e.message}` }));
         return;
       }
@@ -577,11 +578,15 @@
     main.replaceChildren(...RENDER[section](state.cache[section]));
   }
 
-  document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => show(b.dataset.section)));
+  /** Affiche une rubrique ; une erreur de rendu inattendue est montrée au lieu d'être perdue. */
+  const go = (section) => show(section).catch((e) => {
+    main.replaceChildren(h('p', { class: 'empty', text: `Affichage impossible : ${e.message}` }));
+  });
+  document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => go(b.dataset.section)));
   document.querySelectorAll('.segmented button').forEach((b) => b.addEventListener('click', () => {
     state.source = b.dataset.source;
     document.querySelectorAll('.segmented button').forEach((x) => x.setAttribute('aria-checked', String(x === b)));
-    show(state.section);
+    go(state.section);
   }));
   const themeBtn = document.getElementById('theme-toggle');
   const isDark = () => document.documentElement.dataset.theme === 'dark'
@@ -591,11 +596,13 @@
     const next = isDark() ? 'light' : 'dark';
     document.documentElement.dataset.theme = next;
     try { localStorage.setItem('fusion-theme', next); } catch (e) { /* ignoré */ }
-    syncThemeLabel(); show(state.section);
+    syncThemeLabel(); go(state.section);
   });
   syncThemeLabel();
   const refEl = document.getElementById('ref-date');
   if (refEl && /^\d{4}-\d{2}-\d{2}$/.test(refEl.textContent)) refEl.textContent = Fmt.date(refEl.textContent);
+  // rubrique demandée dans l'URL (#…) : acceptée seulement si elle fait partie des rubriques connues
   const initial = location.hash.slice(1);
-  if (main.querySelector('.loading')) show(RENDER[initial] && document.querySelector(`[data-section="${initial}"]`) ? initial : 'synthese');
+  const depart = Object.hasOwn(RENDER, initial) && document.querySelector(`[data-section="${initial}"]`) ? initial : 'synthese';
+  if (main.querySelector('.loading')) go(depart);
 })();

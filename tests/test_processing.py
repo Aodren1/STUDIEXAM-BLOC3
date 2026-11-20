@@ -298,7 +298,9 @@ def test_extraction_seule_et_cli(small_sources, tmp_path, monkeypatch, capsys):
     stats = extract_only(Settings(data_dir=tmp_path))
     assert len(stats) == 8 and all(s["lignes"] > 0 for s in stats)
     monkeypatch.setenv("FUSION_DATA_DIR", str(tmp_path))
-    assert main(["mapping", str(tmp_path / "m.csv")]) == 0
+    monkeypatch.chdir(tmp_path)  # l'export du mapping est confiné au répertoire courant
+    assert main(["mapping", "m.csv"]) == 0
+    assert (tmp_path / "m.csv").exists()
     assert "attributs exportés" in capsys.readouterr().out
     assert main(["seed"]) == 0  # sources déjà présentes : rien n'est régénéré
     assert capsys.readouterr().out.strip() == "null"
@@ -327,3 +329,12 @@ def test_coquille_sur_le_nom_fusionnee():
     b = _client("AP-1", nom="DUPNOT", email="marie@x.fr")
     res = d.run_dedup([a, b])
     assert res.paires[0]["niveau"] == "CERTAIN" and res.paires[0]["score"] == 0.69
+
+
+def test_etape_chronometree_meme_en_echec():
+    from fusion.pipeline import _step
+
+    timings = []
+    with pytest.raises(RuntimeError), _step(timings, "silver"):
+        raise RuntimeError("réconciliation bloquante")
+    assert [t["etape"] for t in timings] == ["silver"]

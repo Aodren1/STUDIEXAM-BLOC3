@@ -17,7 +17,7 @@
     <input type="hidden" name="csrf" value="{{ csrf_token() }}">
     <input type="hidden" name="suivant" value="{{ suivant }}">
     <label for="identifiant">Identifiant</label>
-    <input id="identifiant" name="identifiant" type="text" required autocomplete="username" autofocus>
+    <input id="identifiant" name="identifiant" type="text" required autocomplete="username">
     <label for="mot_de_passe">Mot de passe</label>
     <input id="mot_de_passe" name="mot_de_passe" type="password" required autocomplete="current-password">
     <button type="submit">Se connecter</button>
