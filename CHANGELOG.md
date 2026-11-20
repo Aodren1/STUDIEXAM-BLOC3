@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/) ; versions sémantiques.
 
+## [1.0.3] — 2026-11-20
+
+### Corrigé
+- FUS-14 : tableau de bord : seule une rubrique connue peut être chargée ; la clé placée dans l’URL de l’API
+  provient de la liste des rubriques, jamais de l’adresse saisie (requête forgée côté client, SonarCloud).
+
 ## [1.0.2] — 2026-11-20
 
 ### Corrigé
