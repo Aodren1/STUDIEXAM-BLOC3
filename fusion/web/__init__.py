@@ -75,7 +75,9 @@ class LoginThrottle:
 
 def create_app(settings: Settings | None = None, accounts: dict[str, dict[str, str]] | None = None) -> Flask:
     settings = settings or Settings()
-    app = Flask(__name__)
+    # CSRF : jeton de session vérifié sur chaque POST par _check_csrf (formulaires et en-tête
+    # X-CSRF-Token), testé dans tests/test_web.py ; Flask-WTF n'est donc pas nécessaire.
+    app = Flask(__name__)  # NOSONAR python:S4502
     app.config.update(
         SECRET_KEY=os.environ.get("FUSION_SECRET_KEY") or secrets.token_hex(32),
         SESSION_COOKIE_HTTPONLY=True,

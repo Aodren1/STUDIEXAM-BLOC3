@@ -12,6 +12,7 @@ import argparse
 import json
 from datetime import date, timedelta
 
+from pyspark import SparkConf
 from pyspark.sql import DataFrame, SparkSession
 
 QUERIES = {
@@ -59,10 +60,9 @@ def main(argv: list[str] | None = None) -> dict[str, list[dict]]:
     ap.add_argument("--ref", default="2026-10-31")
     ap.add_argument("--master", default=None)
     args = ap.parse_args(argv)
-    builder = SparkSession.builder.appName("fusion-gold")
-    if args.master:
-        builder = builder.master(args.master)
-    spark = builder.getOrCreate()
+    # maître : --master du script, sinon celui de spark-submit, sinon local
+    master = args.master or SparkConf().get("spark.master", "local[*]")
+    spark = SparkSession.builder.appName("fusion-gold").master(master).getOrCreate()
     lake = args.lake.rstrip("/")
     out = {}
     for name, df in build_gold(spark, lake, date.fromisoformat(args.ref)).items():

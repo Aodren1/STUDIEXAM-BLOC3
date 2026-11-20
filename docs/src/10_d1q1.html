@@ -56,7 +56,7 @@ description 2 à 6 mots en kebab-case, minuscules, sans accent
       <tr><td><code>fix/FUS-12-correctif</code></td><td>refusée</td><td>description d’un seul mot, trop vague</td></tr>
     </tbody>
   </table>
-  <p>Le préfixe de ticket relie chaque branche au backlog Trello du Bloc 2 ; le type permet de filtrer l’historique (toutes les corrections : <code>git log --grep "^fix"</code>) et de déclencher des règles de CI différentes. Les messages de commit suivent la même logique avec les <i>Conventional Commits</i> en français (<code>feat(silver): …</code>, <code>fix(silver): …</code>, <code>Refs: FUS-9</code>).</p>
+  <p>Le préfixe de ticket relie chaque branche à son ticket dans le backlog du projet (clé FUS) ; le type permet de filtrer l’historique (toutes les corrections : <code>git log --grep "^fix"</code>) et de déclencher des règles de CI différentes. Les messages de commit suivent la même logique avec les <i>Conventional Commits</i> en français (<code>feat(silver): …</code>, <code>fix(silver): …</code>, <code>Refs: FUS-9</code>).</p>
 
   <h2>4. Règles de protection et de fusion</h2>
   <ul>

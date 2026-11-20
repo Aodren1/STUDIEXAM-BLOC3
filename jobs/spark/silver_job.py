@@ -17,6 +17,7 @@ import json
 from collections.abc import Iterator
 from pathlib import Path
 
+from pyspark import SparkConf
 from pyspark.sql import DataFrame, Row, SparkSession, Window
 from pyspark.sql import functions as F
 from pyspark.sql import types as T
@@ -99,22 +100,22 @@ def harmonise_partition(rows: Iterator[Row], spec_raw: dict) -> Iterator[tuple]:
     spec = MappingSpec(spec_raw)
     log = QualityLog()
     for r in rows:
-        _, src, entite = r["topic"].split(".")
+        _, src, entite = r.topic.split(".")
         try:
-            env = json.loads(r["json"])
+            env = json.loads(r.json)
         except (json.JSONDecodeError, TypeError):
             env = None
         if not valid_envelope(env):
-            log.flag("DQ16", src.upper(), entite, f"{r['topic']}@{r['partition']}:{r['offset']}", r["json"])
-            yield ("quarantaine", entite, None, r["partition"], r["offset"], (r["json"] or "")[:2000])
+            log.flag("DQ16", src.upper(), entite, f"{r.topic}@{r.partition}:{r.offset}", r.json)
+            yield ("quarantaine", entite, None, r.partition, r.offset, (r.json or "")[:2000])
             continue
         rec = spec.map_record(entite, src.upper(), env["after"], log)
         yield (
             "enregistrement",
             entite,
             rec[f"{entite}_uid"],
-            r["partition"],
-            r["offset"],
+            r.partition,
+            r.offset,
             json.dumps(rec, ensure_ascii=False),
         )
     for a in log.anomalies:
@@ -181,10 +182,14 @@ def main(argv: list[str] | None = None) -> dict[str, int]:
     ap.add_argument("--master", default=None)
     args = ap.parse_args(argv)
 
-    builder = SparkSession.builder.appName("fusion-silver").config("spark.sql.session.timeZone", "Europe/Paris")
-    if args.master:
-        builder = builder.master(args.master)
-    spark = builder.getOrCreate()
+    # maître : --master du script, sinon celui de spark-submit, sinon local
+    master = args.master or SparkConf().get("spark.master", "local[*]")
+    spark = (
+        SparkSession.builder.appName("fusion-silver")
+        .master(master)
+        .config("spark.sql.session.timeZone", "Europe/Paris")
+        .getOrCreate()
+    )
     from fusion.mapping import MappingSpec
 
     spec_raw = MappingSpec.load().raw

@@ -211,7 +211,7 @@ def test_validation_cle_et_doublon(spec):
 
 
 def test_export_csv(spec, tmp_path):
-    n = spec.export_csv(tmp_path / "m.csv")
+    n = spec.export_csv(tmp_path / "m.csv", base=tmp_path)
     with open(tmp_path / "m.csv", encoding="utf-8") as fh:
         rows = list(csv.DictReader(fh, delimiter=";"))
     assert n == len(rows) == sum(len(e.champs) for e in spec.entites.values())
@@ -230,3 +230,14 @@ def test_catalogue_qualite():
     assert len(log.anomalies[0].valeur) == 120
     assert log.counts_by("source") == {("AB",): 1, ("AP",): 1}
     assert all(r.gravite in {"critique", "majeure", "mineure", "info"} for r in REGLES.values())
+
+
+def test_export_csv_confine_au_repertoire(spec, tmp_path):
+    with pytest.raises(ValueError):
+        spec.export_csv("../hors.csv", base=tmp_path)
+    with pytest.raises(ValueError):
+        spec.export_csv(tmp_path.parent / "absolu.csv", base=tmp_path)
+    with pytest.raises(ValueError):
+        spec.export_csv("mapping.txt", base=tmp_path)
+    assert spec.export_csv("sous/../m.csv", base=tmp_path) > 0
+    assert (tmp_path / "m.csv").exists()

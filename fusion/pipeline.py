@@ -47,9 +47,11 @@ class ReconciliationError(RuntimeError):
 def _step(timings: list[dict[str, Any]], name: str):
     t0 = time.perf_counter()
     log.info("étape %s : début", name)
-    yield
-    timings.append({"etape": name, "duree_s": round(time.perf_counter() - t0, 3)})
-    log.info("étape %s : %.2f s", name, timings[-1]["duree_s"])
+    try:
+        yield
+    finally:  # durée enregistrée même si l'étape échoue (réconciliation bloquante, etc.)
+        timings.append({"etape": name, "duree_s": round(time.perf_counter() - t0, 3)})
+        log.info("étape %s : %.2f s", name, timings[-1]["duree_s"])
 
 
 def seed(settings: Settings, force: bool = False) -> dict[str, int] | None:

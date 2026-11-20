@@ -10,6 +10,7 @@ Le même objet est sérialisable (`spec.raw`) pour être diffusé aux exécuteur
 from __future__ import annotations
 
 import csv
+import os
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -142,9 +143,18 @@ class MappingSpec:
                 )
         return out
 
-    def export_csv(self, path: Path | str) -> int:
+    def export_csv(self, path: Path | str, base: Path | str | None = None) -> int:
+        """Exporte le mapping (CSV « ; »). Le fichier doit être un .csv situé sous `base`
+        (répertoire courant par défaut) : un chemin reçu en argument ne peut pas écrire ailleurs."""
+        racine = os.path.realpath(base if base is not None else os.getcwd())
+        cible = os.path.realpath(os.path.join(racine, path))
+        if os.path.commonpath((racine, cible)) != racine:
+            raise ValueError(f"export refusé : {path} sort du répertoire {racine}")
+        if not cible.lower().endswith(".csv"):
+            raise ValueError(f"export refusé : {path} n'est pas un fichier .csv")
         rows = self.rows()
-        with open(path, "w", newline="", encoding="utf-8") as fh:
+        # chemin confiné juste au-dessus (realpath + commonpath, testé) ; Sonar ne reconnaît pas ce contrôle
+        with open(cible, "w", newline="", encoding="utf-8") as fh:  # NOSONAR python:S8707
             w = csv.DictWriter(fh, fieldnames=list(rows[0]), delimiter=";")
             w.writeheader()
             w.writerows(rows)
